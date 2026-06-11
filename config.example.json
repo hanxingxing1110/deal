@@ -1,0 +1,14 @@
+{
+  "symbol": "BTCUSDT",
+  "coinbase_product_id": "BTC-USD",
+  "interval": "1h",
+  "candle_limit": 120,
+  "starting_cash": 10000.0,
+  "risk_per_trade": 0.01,
+  "max_position_usd": 1000.0,
+  "fee_bps": 10.0,
+  "min_confidence": 0.55,
+  "max_risk_score": 65,
+  "allow_short": false,
+  "sample_csv": "data/sample_btcusdt_1h.csv"
+}

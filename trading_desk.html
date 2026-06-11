@@ -1,0 +1,2129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crypto Quant Trading Desk</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1217;
+      --panel: #171c24;
+      --panel-2: #11161d;
+      --ink: #e8edf4;
+      --muted: #8d99a8;
+      --line: #273140;
+      --green: #19a974;
+      --red: #e15c58;
+      --amber: #d6a03d;
+      --blue: #5aa0ff;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #10151c;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    h2 {
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: var(--muted);
+    }
+
+    .status-line {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    input, select, button {
+      height: 34px;
+      border: 1px solid var(--line);
+      background: #0c1117;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    input[type="file"] {
+      width: 160px;
+      padding-top: 7px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.primary {
+      background: var(--blue);
+      color: #06111f;
+      border-color: var(--blue);
+    }
+
+    button.danger {
+      background: #261518;
+      color: #ff8b86;
+      border-color: #673037;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 14px;
+      padding: 14px;
+      min-height: 0;
+    }
+
+    .chart-shell {
+      display: grid;
+      grid-template-rows: auto minmax(420px, 1fr) auto;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .market-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      display: grid;
+      gap: 4px;
+      min-height: 58px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric strong {
+      font-size: 19px;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .chart-panel {
+      position: relative;
+      padding: 0;
+      overflow: hidden;
+      min-height: 480px;
+    }
+
+    #chartCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 480px;
+      background: #0b0f15;
+      cursor: grab;
+      user-select: none;
+    }
+
+    #chartCanvas.dragging {
+      cursor: grabbing;
+    }
+
+    .chart-overlay {
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      display: flex;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .tool-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tool-btn {
+      min-width: 42px;
+      padding: 0 10px;
+      background: #0c1117;
+      color: var(--muted);
+      border-color: var(--line);
+    }
+
+    .tool-btn.active {
+      color: #06111f;
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .tech-item {
+      min-height: 64px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .tech-item span {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .tech-item strong {
+      font-size: 14px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .desk-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .side {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .kv {
+      display: grid;
+      gap: 9px;
+    }
+
+    .kv div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kv span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .kv strong {
+      text-align: right;
+      font-size: 13px;
+    }
+
+    .decision {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .long {
+      color: var(--white);
+      background: var(--green);
+    }
+
+    .short {
+      color: var(--white);
+      background: var(--red);
+    }
+
+    .hold {
+      color: #151009;
+      background: var(--amber);
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .form label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .form .full {
+      grid-column: 1 / -1;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .log {
+      min-height: 220px;
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b0f15;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 8px 7px;
+      border-bottom: 1px solid #1d2633;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th:first-child, td:first-child {
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      background: #0b0f15;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .positive {
+      color: var(--green);
+    }
+
+    .negative {
+      color: var(--red);
+    }
+
+    @media (max-width: 1100px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .market-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .desk-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Crypto Quant Trading Desk</h1>
+        <p id="statusLine" class="status-line">等待加载行情。</p>
+      </div>
+      <div class="toolbar">
+        <select id="sourceSelect" title="行情源">
+          <option value="auto">自动行情源</option>
+          <option value="okx">OKX</option>
+          <option value="binance">Binance</option>
+          <option value="coinbase">Coinbase</option>
+        </select>
+        <input id="symbolInput" value="BTCUSDT" title="交易标的">
+        <select id="intervalSelect" title="周期">
+          <option value="15m">15分钟</option>
+          <option value="1h">1小时</option>
+        </select>
+        <select id="historyLimitSelect" title="历史K线数量">
+          <option value="300">300根</option>
+          <option value="1000" selected>1,000根</option>
+          <option value="3000">3,000根</option>
+          <option value="10000">10,000根</option>
+          <option value="50000">50,000根</option>
+        </select>
+        <select id="autoRefreshSelect" title="自动刷新">
+          <option value="5" selected>实时：5秒</option>
+          <option value="10">实时：10秒</option>
+          <option value="30">实时：30秒</option>
+          <option value="60">实时：60秒</option>
+          <option value="0">暂停实时</option>
+        </select>
+        <button id="loadBtn" class="primary">立即同步</button>
+        <input id="csvInput" type="file" accept=".csv,text/csv" title="导入CSV">
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="chart-shell">
+        <section class="market-strip">
+          <div class="metric"><span>最新价格</span><strong id="lastPrice">-</strong></div>
+          <div class="metric"><span>24小时内变化</span><strong id="sessionChange">-</strong></div>
+          <div class="metric"><span>RSI14</span><strong id="rsiValue">-</strong></div>
+          <div class="metric"><span>ATR占比</span><strong id="atrPct">-</strong></div>
+          <div class="metric"><span>数据源</span><strong id="dataSource">-</strong></div>
+          <div class="metric"><span>最后更新</span><strong id="lastUpdated">-</strong></div>
+        </section>
+
+        <section class="tool-strip" aria-label="技术工具">
+          <button class="tool-btn active" data-tool="fibonacci" title="斐波那契回撤">Fib</button>
+          <button class="tool-btn active" data-tool="structure" title="市场结构 HH/HL/LH/LL">结构</button>
+          <button class="tool-btn active" data-tool="levels" title="前高前低支撑压力">支撑</button>
+          <button class="tool-btn" data-tool="bollinger" title="布林带">BOLL</button>
+          <button class="tool-btn" data-tool="vwap" title="VWAP">VWAP</button>
+          <button class="tool-btn" data-tool="volumeProfile" title="成交量密集区">量价</button>
+          <button class="tool-btn active" data-tool="divergence" title="RSI/MACD 背离">背离</button>
+          <button class="tool-btn active" data-tool="patterns" title="K线形态">形态</button>
+        </section>
+
+        <section class="chart-panel">
+          <canvas id="chartCanvas"></canvas>
+          <div class="chart-overlay">
+            <span id="chartSymbol">BTCUSDT</span>
+            <span>SMA20</span>
+            <span>EMA12/EMA26</span>
+            <span>入场/止损/止盈</span>
+            <span>AI/ME</span>
+          </div>
+        </section>
+
+        <section>
+          <h2>技术共振</h2>
+          <div class="tech-grid">
+            <div class="tech-item"><span>结构</span><strong id="techStructure">-</strong></div>
+            <div class="tech-item"><span>斐波那契</span><strong id="techFib">-</strong></div>
+            <div class="tech-item"><span>布林/VWAP</span><strong id="techBands">-</strong></div>
+            <div class="tech-item"><span>MACD</span><strong id="techMacd">-</strong></div>
+            <div class="tech-item"><span>背离/形态</span><strong id="techDivergence">-</strong></div>
+            <div class="tech-item"><span>共振分</span><strong id="techScore">-</strong></div>
+          </div>
+        </section>
+
+        <div class="desk-grid">
+          <section>
+            <h2>智能体信号</h2>
+            <div class="kv">
+              <div><span>决策</span><strong><span id="agentDecision" class="decision hold">观望</span></strong></div>
+              <div><span>置信度</span><strong id="agentConfidence">-</strong></div>
+              <div><span>风险分数</span><strong id="riskScore">-</strong></div>
+              <div><span>入场价</span><strong id="planEntry">-</strong></div>
+              <div><span>止损价</span><strong id="planStop">-</strong></div>
+              <div><span>止盈价</span><strong id="planTarget">-</strong></div>
+              <div><span>风控结果</span><strong id="riskAllowed">-</strong></div>
+            </div>
+          </section>
+
+          <section>
+            <h2>策略说明</h2>
+            <div id="agentReasons" class="note">等待行情分析。</div>
+          </section>
+        </div>
+      </div>
+
+      <aside class="side">
+        <section>
+          <h2>本人手动操作</h2>
+          <div class="form">
+            <label>方向
+              <select id="manualSide">
+                <option value="LONG">做多</option>
+                <option value="SHORT">做空</option>
+                <option value="HOLD">观望记录</option>
+              </select>
+            </label>
+            <label>价格
+              <input id="manualPrice" type="number" step="0.01">
+            </label>
+            <label>数量
+              <input id="manualQty" type="number" step="0.0001" value="0.01">
+            </label>
+            <label>周期
+              <input id="manualInterval" value="15m">
+            </label>
+            <label class="full">备注
+              <input id="manualNote" placeholder="你的判断、原因、复盘标签">
+            </label>
+          </div>
+          <div class="actions" style="margin-top:10px">
+            <button id="recordManualBtn" class="primary">记录操作</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>智能体模拟操作</h2>
+          <p class="note">这里不会真实下单，只会把当前智能体建议写入本地操作记录。</p>
+          <div class="actions" style="margin-top:10px">
+            <button id="recordAgentBtn">记录智能体建议</button>
+            <button id="exportLogBtn">导出记录CSV</button>
+            <button id="clearLogBtn" class="danger">清空记录</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>操作记录</h2>
+          <div class="log">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>来源</th>
+                  <th>方向</th>
+                  <th>价格</th>
+                  <th>数量</th>
+                  <th>周期</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody id="operationLog"></tbody>
+            </table>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const state = {
+      candles: [],
+      indicators: {},
+      signal: null,
+      symbol: "BTCUSDT",
+      interval: "15m",
+      source: "sample",
+      requestedSource: "auto",
+      sourceErrors: {},
+      riskScore: null,
+      riskAllowed: null,
+      riskBlocks: [],
+      lastUpdatedAt: null,
+      refreshTimer: null,
+      isLoading: false,
+      isRealtimeSyncing: false,
+      chartStart: 0,
+      chartCount: 160,
+      drag: null,
+      technicals: null,
+      activeTools: {
+        fibonacci: true,
+        structure: true,
+        levels: true,
+        bollinger: false,
+        vwap: false,
+        volumeProfile: false,
+        divergence: true,
+        patterns: true,
+      },
+      operations: JSON.parse(localStorage.getItem("quantDeskOperations") || "[]"),
+    };
+
+    const els = {
+      statusLine: document.getElementById("statusLine"),
+      sourceSelect: document.getElementById("sourceSelect"),
+      symbolInput: document.getElementById("symbolInput"),
+      intervalSelect: document.getElementById("intervalSelect"),
+      historyLimitSelect: document.getElementById("historyLimitSelect"),
+      autoRefreshSelect: document.getElementById("autoRefreshSelect"),
+      loadBtn: document.getElementById("loadBtn"),
+      csvInput: document.getElementById("csvInput"),
+      canvas: document.getElementById("chartCanvas"),
+      lastPrice: document.getElementById("lastPrice"),
+      sessionChange: document.getElementById("sessionChange"),
+      rsiValue: document.getElementById("rsiValue"),
+      atrPct: document.getElementById("atrPct"),
+      dataSource: document.getElementById("dataSource"),
+      lastUpdated: document.getElementById("lastUpdated"),
+      chartSymbol: document.getElementById("chartSymbol"),
+      agentDecision: document.getElementById("agentDecision"),
+      agentConfidence: document.getElementById("agentConfidence"),
+      riskScore: document.getElementById("riskScore"),
+      planEntry: document.getElementById("planEntry"),
+      planStop: document.getElementById("planStop"),
+      planTarget: document.getElementById("planTarget"),
+      riskAllowed: document.getElementById("riskAllowed"),
+      agentReasons: document.getElementById("agentReasons"),
+      toolButtons: [...document.querySelectorAll("[data-tool]")],
+      techStructure: document.getElementById("techStructure"),
+      techFib: document.getElementById("techFib"),
+      techBands: document.getElementById("techBands"),
+      techMacd: document.getElementById("techMacd"),
+      techDivergence: document.getElementById("techDivergence"),
+      techScore: document.getElementById("techScore"),
+      manualSide: document.getElementById("manualSide"),
+      manualPrice: document.getElementById("manualPrice"),
+      manualQty: document.getElementById("manualQty"),
+      manualInterval: document.getElementById("manualInterval"),
+      manualNote: document.getElementById("manualNote"),
+      recordManualBtn: document.getElementById("recordManualBtn"),
+      recordAgentBtn: document.getElementById("recordAgentBtn"),
+      exportLogBtn: document.getElementById("exportLogBtn"),
+      clearLogBtn: document.getElementById("clearLogBtn"),
+      operationLog: document.getElementById("operationLog"),
+    };
+
+    function fmt(value, digits = 2) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+      return Number(value).toLocaleString("en-US", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: digits,
+      });
+    }
+
+    function setStatus(text) {
+      els.statusLine.textContent = text;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function selectedHistoryLimit() {
+      const value = Number(els.historyLimitSelect.value || 1000);
+      return clamp(Number.isFinite(value) ? value : 1000, 30, 50000);
+    }
+
+    function formatCandleTime(seconds) {
+      const date = new Date(Number(seconds) * 1000);
+      if (Number.isNaN(date.getTime())) return "-";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hour = String(date.getHours()).padStart(2, "0");
+      const minute = String(date.getMinutes()).padStart(2, "0");
+      return `${year}/${month}/${day} ${hour}:${minute}`;
+    }
+
+    async function loadMarket() {
+      if (state.isLoading) return;
+      const requestedSource = els.sourceSelect.value;
+      const symbol = els.symbolInput.value.trim().toUpperCase() || "BTCUSDT";
+      const interval = els.intervalSelect.value;
+      const limit = selectedHistoryLimit();
+      state.isLoading = true;
+      state.symbol = symbol;
+      state.interval = interval;
+      state.requestedSource = requestedSource;
+      els.manualInterval.value = interval;
+      els.chartSymbol.textContent = `${symbol} ${interval}`;
+      els.loadBtn.disabled = true;
+      setStatus(`正在加载 ${symbol} ${interval} 行情，数据源：${sourceLabel(requestedSource)}，历史 ${limit} 根...`);
+
+      try {
+        const payload = await fetchMarketPayload(requestedSource, symbol, interval, limit);
+        updateMarket(payload, { resetWindow: true, merge: false });
+        setStatus(loadedStatus(payload));
+      } catch (error) {
+        console.warn(error);
+        const candles = generateSampleCandles(Math.min(limit, interval === "15m" ? 1200 : 600), interval);
+        updateMarket({
+          candles,
+          source: "sample",
+          requested_source: requestedSource,
+          symbol,
+          interval,
+          analysis: null,
+          source_errors: {},
+        }, { resetWindow: true, merge: false });
+        setStatus(`真实行情加载失败，已使用内置样例数据。原因：${error.message}`);
+      } finally {
+        state.isLoading = false;
+        els.loadBtn.disabled = false;
+      }
+    }
+
+    async function syncRealtimeMarket() {
+      if (state.isLoading || state.isRealtimeSyncing) return;
+      if (!state.candles.length) {
+        await loadMarket();
+        return;
+      }
+
+      const requestedSource = state.requestedSource;
+      const symbol = state.symbol;
+      const interval = state.interval;
+      const limit = Math.min(320, selectedHistoryLimit());
+      state.isRealtimeSyncing = true;
+
+      try {
+        const payload = await fetchMarketPayload(requestedSource, symbol, interval, limit);
+        updateMarket(payload, { resetWindow: false, merge: true });
+        setStatus(`${loadedStatus(payload)} 实时同步：${state.lastUpdatedAt.toLocaleTimeString()}。`);
+      } catch (error) {
+        console.warn(error);
+        setStatus(`实时同步失败，保留当前行情。原因：${error.message}`);
+      } finally {
+        state.isRealtimeSyncing = false;
+      }
+    }
+
+    async function fetchMarketPayload(source, symbol, interval, limit) {
+      const localPayload = await tryFetchLocalCandles(source, symbol, interval, limit);
+      if (localPayload) {
+        return localPayload;
+      }
+      const sources = sourceOrder(source);
+      const errors = {};
+      for (const directSource of sources) {
+        try {
+          const candles = directSource === "binance"
+            ? await fetchBinance(symbol, interval, limit)
+            : directSource === "coinbase"
+              ? await fetchCoinbase(symbol, interval, limit)
+              : await fetchOkx(symbol, interval, limit);
+          return {
+            ok: true,
+            requested_source: source,
+            source: directSource,
+            symbol,
+            interval,
+            limit: candles.length,
+            candles,
+            analysis: null,
+            source_errors: errors,
+          };
+        } catch (error) {
+          errors[directSource] = error.message;
+        }
+      }
+      throw new Error(Object.entries(errors).map(([name, message]) => `${sourceLabel(name)}: ${message}`).join("；"));
+    }
+
+    async function tryFetchLocalCandles(source, symbol, interval, limit) {
+      const canUseRelative = location.protocol.startsWith("http") && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+      const urls = canUseRelative ? [""] : ["http://127.0.0.1:8765"];
+      for (const baseUrl of urls) {
+        try {
+          return await fetchLocalCandles(source, symbol, interval, limit, baseUrl);
+        } catch (error) {
+          console.warn("Local market service unavailable:", error);
+        }
+      }
+      return null;
+    }
+
+    async function fetchLocalCandles(source, symbol, interval, limit, baseUrl = "") {
+      const params = new URLSearchParams({ source, symbol, interval, limit });
+      const response = await fetch(`${baseUrl}/api/candles?${params}`);
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || `Local API HTTP ${response.status}`);
+      return payload;
+    }
+
+    async function fetchOkx(symbol, interval, limit = 300) {
+      const instId = okxInstId(symbol);
+      const bar = interval === "15m" ? "15m" : "1H";
+      const directLimit = Math.min(300, selectedHistoryLimit(), limit);
+      const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${directLimit}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`OKX HTTP ${response.status}`);
+      const payload = await response.json();
+      if (!payload.data || !payload.data.length) throw new Error("OKX没有返回K线");
+      return payload.data
+        .map(row => ({
+          time: Math.floor(Number(row[0]) / 1000),
+          open: Number(row[1]),
+          high: Number(row[2]),
+          low: Number(row[3]),
+          close: Number(row[4]),
+          volume: Number(row[5]),
+        }))
+        .reverse();
+    }
+
+    async function fetchBinance(symbol, interval, limit = 300) {
+      const directLimit = Math.min(1000, selectedHistoryLimit(), limit);
+      const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${directLimit}`;
+      const response = await fetch(url);
+      if (response.status === 451) throw new Error("Binance HTTP 451（当前网络或地区可能无法访问 Binance 公共行情接口）");
+      if (!response.ok) throw new Error(`Binance HTTP ${response.status}`);
+      const rows = await response.json();
+      return rows.map(row => ({
+        time: Math.floor(Number(row[0]) / 1000),
+        open: Number(row[1]),
+        high: Number(row[2]),
+        low: Number(row[3]),
+        close: Number(row[4]),
+        volume: Number(row[5]),
+      }));
+    }
+
+    async function fetchCoinbase(symbol, interval, limit = 300) {
+      const product = symbol.includes("-")
+        ? symbol
+        : symbol.endsWith("USDT")
+          ? symbol.slice(0, -4) + "-USD"
+          : symbol.endsWith("USD")
+            ? symbol.slice(0, -3) + "-USD"
+            : symbol;
+      const granularity = interval === "15m" ? 900 : 3600;
+      const end = new Date();
+      const directLimit = Math.min(300, selectedHistoryLimit(), limit);
+      const start = new Date(end.getTime() - granularity * directLimit * 1000);
+      const params = new URLSearchParams({
+        granularity,
+        start: start.toISOString(),
+        end: end.toISOString(),
+      });
+      const url = `https://api.exchange.coinbase.com/products/${encodeURIComponent(product)}/candles?${params}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Coinbase HTTP ${response.status}`);
+      const rows = await response.json();
+      return rows
+        .sort((a, b) => a[0] - b[0])
+        .map(row => ({
+          time: Number(row[0]),
+          low: Number(row[1]),
+          high: Number(row[2]),
+          open: Number(row[3]),
+          close: Number(row[4]),
+          volume: Number(row[5] || 0),
+        }));
+    }
+
+    function updateMarket(payload, options = {}) {
+      const incoming = (payload.candles || []).filter(c => Number.isFinite(c.close) && c.close > 0);
+      const previousCandles = state.candles;
+      const previousStartTime = previousCandles[state.chartStart]?.time;
+      const previousCount = state.chartCount || 160;
+      const wasAtLatest = isChartPinnedToLatest(previousCandles);
+
+      state.candles = options.merge
+        ? mergeCandles(previousCandles, incoming, selectedHistoryLimit())
+        : incoming;
+      state.source = payload.source || "sample";
+      state.requestedSource = payload.requested_source || state.requestedSource;
+      state.symbol = payload.symbol || state.symbol;
+      state.interval = payload.interval || state.interval;
+      state.sourceErrors = payload.source_errors || {};
+      state.lastUpdatedAt = new Date();
+      applyAnalysis(payload.analysis);
+      restoreChartWindow({
+        resetWindow: options.resetWindow !== false,
+        previousStartTime,
+        previousCount,
+        wasAtLatest,
+      });
+      renderMetrics();
+      drawChart();
+      renderOperations();
+    }
+
+    function applyAnalysis(analysis) {
+      state.indicators = buildIndicators(state.candles);
+      state.technicals = buildTechnicalSnapshot(state.candles);
+      state.signal = buildSignal(state.indicators, state.technicals);
+      state.riskScore = scoreRisk(state.indicators, state.signal);
+      state.riskAllowed = null;
+      state.riskBlocks = [];
+
+      if (!analysis) return;
+      state.technicals = analysis.technicals || state.technicals;
+      const indicators = analysis.indicators || {};
+      state.indicators = {
+        close: indicators.close ?? state.indicators.close,
+        sma20: indicators.sma_20 ?? state.indicators.sma20,
+        ema12: indicators.ema_12 ?? state.indicators.ema12,
+        ema26: indicators.ema_26 ?? state.indicators.ema26,
+        rsi14: indicators.rsi_14 ?? state.indicators.rsi14,
+        atr14: indicators.atr_14 ?? state.indicators.atr14,
+        atrPct: indicators.atr_pct ?? state.indicators.atrPct,
+      };
+      const plan = analysis.trade_plan || {};
+      state.signal = {
+        decision: analysis.decision || "HOLD",
+        confidence: analysis.confidence ?? 0,
+        entry: plan.entry,
+        stop: plan.stop_loss,
+        target: plan.take_profit,
+        reasons: analysis.reasons || [],
+      };
+      if (!analysis.technicals) {
+        state.signal = buildSignal(state.indicators, state.technicals);
+      }
+      state.riskScore = analysis.risk_score;
+      state.riskAllowed = analysis.risk_allowed;
+      state.riskBlocks = analysis.risk_blocks || [];
+    }
+
+    function buildIndicators(candles) {
+      const closes = candles.map(c => c.close);
+      const close = closes[closes.length - 1] || 0;
+      const atr14 = atr(candles, 14) || 0;
+      return {
+        close,
+        sma20: sma(closes, 20) || close,
+        ema12: ema(closes, 12) || close,
+        ema26: ema(closes, 26) || close,
+        rsi14: rsi(closes, 14) || 50,
+        atr14,
+        atrPct: close ? (atr14 / close) * 100 : 0,
+      };
+    }
+
+    function buildSignal(indicators, technicals = null) {
+      const bullish = indicators.ema12 > indicators.ema26 && indicators.close > indicators.sma20;
+      const bearish = indicators.ema12 < indicators.ema26 && indicators.close < indicators.sma20;
+      const momentumOk = indicators.rsi14 >= 38 && indicators.rsi14 <= 68;
+      const technicalScore = Number(technicals?.score || 0);
+      let confidence = 0.3;
+      const reasons = [];
+
+      if (bullish) {
+        confidence += 0.3;
+        reasons.push("短期均线强于中期均线，价格位于SMA20上方。");
+      } else if (bearish) {
+        confidence += 0.22;
+        reasons.push("短期均线弱于中期均线，价格位于SMA20下方。");
+      } else {
+        reasons.push("趋势方向不够清晰。");
+      }
+
+      if (momentumOk) {
+        confidence += 0.18;
+        reasons.push("RSI处于健康区间。");
+      } else if (indicators.rsi14 > 72) {
+        confidence -= 0.12;
+        reasons.push("RSI偏高，追涨风险增加。");
+      } else if (indicators.rsi14 < 30) {
+        confidence -= 0.05;
+        reasons.push("RSI偏低，可能处于下跌惯性。");
+      }
+
+      if (indicators.atrPct <= 2.5) {
+        confidence += 0.1;
+        reasons.push("ATR占比可控，波动没有明显失控。");
+      } else {
+        confidence -= 0.1;
+        reasons.push("ATR占比较高，当前波动风险偏大。");
+      }
+
+      if (technicals) {
+        confidence += clamp(technicalScore * 0.12, -0.12, 0.12);
+        for (const note of (technicals.notes || []).slice(0, 4)) reasons.push(note);
+        if (technicalScore > 0.2) reasons.push("多组K线技术工具出现偏多共振。");
+        else if (technicalScore < -0.2) reasons.push("多组K线技术工具出现偏空共振。");
+        else reasons.push("K线技术工具共振不明显。");
+      }
+
+      confidence = Math.max(0, Math.min(0.95, confidence));
+      let decision = "HOLD";
+      if (bullish && momentumOk && technicalScore >= -0.35) decision = "LONG";
+      if (bearish && indicators.rsi14 > 25 && technicalScore <= 0.35) decision = "SHORT";
+
+      const entry = decision === "HOLD" ? null : indicators.close;
+      const stop = decision === "LONG"
+        ? indicators.close - 1.5 * indicators.atr14
+        : decision === "SHORT"
+          ? indicators.close + 1.5 * indicators.atr14
+          : null;
+      const target = decision === "LONG"
+        ? indicators.close + 2.5 * indicators.atr14
+        : decision === "SHORT"
+          ? indicators.close - 2.5 * indicators.atr14
+          : null;
+      if (decision === "HOLD") reasons.push("没有出现足够干净的入场条件，保持观望。");
+      return { decision, confidence, entry, stop, target, reasons };
+    }
+
+    function renderMetrics() {
+      const candles = state.candles;
+      const last = candles[candles.length - 1];
+      const first = candles[Math.max(0, candles.length - 96)] || candles[0];
+      const change = first && last ? ((last.close - first.close) / first.close) * 100 : 0;
+      const signal = state.signal;
+      const risk = state.riskScore ?? scoreRisk(state.indicators, signal);
+
+      els.lastPrice.textContent = fmt(last?.close, 2);
+      els.sessionChange.textContent = `${change >= 0 ? "+" : ""}${fmt(change, 2)}%`;
+      els.sessionChange.className = change >= 0 ? "positive" : "negative";
+      els.rsiValue.textContent = fmt(state.indicators.rsi14, 2);
+      els.atrPct.textContent = `${fmt(state.indicators.atrPct, 3)}%`;
+      els.dataSource.textContent = sourceLabel(state.source);
+      els.lastUpdated.textContent = state.lastUpdatedAt ? state.lastUpdatedAt.toLocaleTimeString() : "-";
+      els.manualPrice.value = last ? last.close.toFixed(2) : "";
+
+      els.agentDecision.textContent = sideLabel(signal.decision);
+      els.agentDecision.className = `decision ${signal.decision.toLowerCase()}`;
+      els.agentConfidence.textContent = fmt(signal.confidence, 3);
+      els.riskScore.textContent = risk;
+      els.planEntry.textContent = fmt(signal.entry, 2);
+      els.planStop.textContent = fmt(signal.stop, 2);
+      els.planTarget.textContent = fmt(signal.target, 2);
+      els.riskAllowed.textContent = riskAllowedLabel();
+      const details = [...(signal.reasons || [])];
+      if (state.riskBlocks.length) details.push(`风控拦截：${state.riskBlocks.join("；")}`);
+      els.agentReasons.innerHTML = details.map(r => `<p>${escapeHtml(r)}</p>`).join("");
+      renderTechnicalSummary();
+    }
+
+    function renderTechnicalSummary() {
+      const tech = state.technicals;
+      if (!tech) return;
+      const structure = tech.market_structure || {};
+      const fib = tech.fibonacci || {};
+      const boll = tech.bollinger || {};
+      const vwap = tech.vwap || {};
+      const macd = tech.macd || {};
+      const divergence = tech.divergence || {};
+      const patterns = tech.candlestick_patterns || [];
+
+      els.techStructure.textContent = `${structure.bias || "-"} ${((structure.labels || []).slice(-4).join(" ") || "")}`;
+      els.techFib.textContent = `${fib.direction || "-"} / ${fib.zone || "-"} / ${nearestFibText(fib)}`;
+      els.techBands.textContent = `BOLL ${boll.state || "-"} / VWAP ${vwap.position || "-"}`;
+      els.techMacd.textContent = `${macd.bias || "-"} hist ${fmt(macd.histogram, 4)}`;
+      els.techDivergence.textContent = `${divergence.type || "-"} / ${patterns.slice(-2).map(item => item.label).join("、") || "无形态"}`;
+      els.techScore.textContent = fmt(tech.score, 3);
+      els.techScore.className = Number(tech.score) >= 0 ? "positive" : "negative";
+    }
+
+    function nearestFibText(fib) {
+      const levels = fib.levels || [];
+      if (!levels.length) return "-";
+      const nearest = [...levels].sort((a, b) => Math.abs(a.distance_pct) - Math.abs(b.distance_pct))[0];
+      return `${Math.round(nearest.ratio * 1000) / 10}% ${fmt(nearest.price, 2)}`;
+    }
+
+    function scoreRisk(indicators, signal) {
+      let score = 20;
+      if (indicators.atrPct > 1.5) score += 15;
+      if (indicators.atrPct > 3.0) score += 20;
+      if (indicators.rsi14 > 72 || indicators.rsi14 < 28) score += 15;
+      if (signal.confidence < 0.55) score += 15;
+      if (signal.decision === "SHORT") score += 10;
+      return Math.max(0, Math.min(100, score));
+    }
+
+    function drawChart() {
+      const canvas = els.canvas;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      syncChartWindow();
+      const candles = visibleCandles();
+      if (!candles.length) return;
+      const pad = chartPad();
+      const width = rect.width - pad.left - pad.right;
+      const height = rect.height - pad.top - pad.bottom;
+      const visibleOps = visibleOperations(candles);
+      const planPrices = [state.signal?.entry, state.signal?.stop, state.signal?.target]
+        .filter(Number.isFinite)
+        .filter(price => priceFitsVisibleRange(price, candles));
+      const operationPrices = visibleOps.map(item => item.price).filter(Number.isFinite);
+      const overlayPrices = technicalOverlayPrices();
+      const maxPrice = Math.max(
+        ...candles.map(c => c.high),
+        ...planPrices,
+        ...operationPrices,
+        ...overlayPrices,
+      );
+      const minPrice = Math.min(
+        ...candles.map(c => c.low),
+        ...planPrices,
+        ...operationPrices,
+        ...overlayPrices,
+      );
+      const scale = price => pad.top + ((maxPrice - price) / (maxPrice - minPrice || 1)) * height;
+      const step = width / candles.length;
+      const candleWidth = Math.max(2, Math.min(8, step * 0.62));
+
+      ctx.strokeStyle = "#1b2532";
+      ctx.lineWidth = 1;
+      ctx.font = "11px Arial";
+      ctx.fillStyle = "#8d99a8";
+      for (let i = 0; i <= 5; i++) {
+        const y = pad.top + (height / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(rect.width - pad.right, y);
+        ctx.stroke();
+        const price = maxPrice - ((maxPrice - minPrice) / 5) * i;
+        ctx.fillText(fmt(price, 2), rect.width - pad.right + 8, y + 4);
+      }
+
+      candles.forEach((c, i) => {
+        const x = pad.left + i * step + step / 2;
+        const up = c.close >= c.open;
+        ctx.strokeStyle = up ? "#19a974" : "#e15c58";
+        ctx.fillStyle = up ? "#19a974" : "#e15c58";
+        ctx.beginPath();
+        ctx.moveTo(x, scale(c.high));
+        ctx.lineTo(x, scale(c.low));
+        ctx.stroke();
+        const yOpen = scale(c.open);
+        const yClose = scale(c.close);
+        ctx.fillRect(x - candleWidth / 2, Math.min(yOpen, yClose), candleWidth, Math.max(1, Math.abs(yClose - yOpen)));
+      });
+
+      drawLine(ctx, candles, c => c.close, pad, width, height, maxPrice, minPrice, "#5aa0ff", 1, 20);
+      drawMoving(ctx, candles, 12, pad, width, height, maxPrice, minPrice, "#d6a03d");
+      drawMoving(ctx, candles, 26, pad, width, height, maxPrice, minPrice, "#b67cff");
+      drawTechnicalOverlays(ctx, candles, pad, rect, width, height, maxPrice, minPrice);
+      drawPlanLines(ctx, pad, rect, maxPrice, minPrice);
+      drawOperationMarkers(ctx, candles, visibleOps, pad, width, maxPrice, minPrice);
+      drawTimeAxis(ctx, candles, pad, rect, width);
+      drawWindowInfo(ctx, pad, rect, candles);
+    }
+
+    function drawPlanLines(ctx, pad, rect, maxPrice, minPrice) {
+      const plans = [
+        { label: "入场", value: state.signal?.entry, color: "#5aa0ff" },
+        { label: "止损", value: state.signal?.stop, color: "#e15c58" },
+        { label: "止盈", value: state.signal?.target, color: "#19a974" },
+      ].filter(item => Number.isFinite(item.value));
+      if (!plans.length) return;
+
+      plans.forEach(item => {
+        const y = priceToY(item.value, pad, rect.height - pad.top - pad.bottom, maxPrice, minPrice);
+        ctx.save();
+        ctx.strokeStyle = item.color;
+        ctx.fillStyle = item.color;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(rect.width - pad.right, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = "11px Arial";
+        ctx.fillText(`${item.label} ${fmt(item.value, 2)}`, pad.left + 8, y - 5);
+        ctx.restore();
+      });
+    }
+
+    function technicalOverlayPrices() {
+      const tech = state.technicals || {};
+      const prices = [];
+      if (state.activeTools.fibonacci) prices.push(...(tech.fibonacci?.levels || []).map(item => item.price));
+      if (state.activeTools.bollinger) prices.push(tech.bollinger?.upper, tech.bollinger?.middle, tech.bollinger?.lower);
+      if (state.activeTools.vwap) prices.push(tech.vwap?.value);
+      if (state.activeTools.levels) {
+        const sr = tech.support_resistance || buildSupportResistance(state.candles);
+        prices.push(...(sr.supports || []).map(item => item.price));
+        prices.push(...(sr.resistances || []).map(item => item.price));
+      }
+      return prices.filter(Number.isFinite).filter(price => priceFitsVisibleRange(price, visibleCandles()));
+    }
+
+    function drawTechnicalOverlays(ctx, candles, pad, rect, width, height, maxPrice, minPrice) {
+      const tech = state.technicals;
+      if (!tech || !candles.length) return;
+      if (state.activeTools.bollinger) drawBollingerOverlay(ctx, candles, pad, width, height, maxPrice, minPrice);
+      if (state.activeTools.vwap) drawVwapOverlay(ctx, candles, pad, width, height, maxPrice, minPrice);
+      if (state.activeTools.volumeProfile) drawVolumeProfileOverlay(ctx, pad, rect, maxPrice, minPrice);
+      if (state.activeTools.fibonacci) drawFibonacciOverlay(ctx, pad, rect, maxPrice, minPrice);
+      if (state.activeTools.levels) drawSupportResistanceOverlay(ctx, pad, rect, maxPrice, minPrice);
+      if (state.activeTools.structure) drawStructureOverlay(ctx, candles, pad, width, maxPrice, minPrice);
+      if (state.activeTools.divergence) drawDivergenceOverlay(ctx, candles, pad, width, maxPrice, minPrice);
+      if (state.activeTools.patterns) drawPatternOverlay(ctx, candles, pad, width, maxPrice, minPrice);
+    }
+
+    function drawFibonacciOverlay(ctx, pad, rect, maxPrice, minPrice) {
+      const fib = state.technicals?.fibonacci;
+      if (!fib?.levels?.length) return;
+      for (const level of fib.levels) {
+        const y = priceToY(level.price, pad, rect.height - pad.top - pad.bottom, maxPrice, minPrice);
+        ctx.save();
+        ctx.strokeStyle = level.ratio === 0.618 ? "#d6a03d" : "#7aa7ff";
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = level.ratio === 0.618 ? 1.4 : 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(rect.width - pad.right, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = "11px Arial";
+        ctx.fillText(`Fib ${Math.round(level.ratio * 1000) / 10}% ${fmt(level.price, 2)}`, pad.left + 8, y - 4);
+        ctx.restore();
+      }
+    }
+
+    function drawSupportResistanceOverlay(ctx, pad, rect, maxPrice, minPrice) {
+      const sr = state.technicals?.support_resistance || buildSupportResistance(state.candles);
+      const lines = [
+        ...(sr.supports || []).slice(0, 3).map(item => ({ ...item, label: "支撑", color: "#19a974" })),
+        ...(sr.resistances || []).slice(0, 3).map(item => ({ ...item, label: "压力", color: "#e15c58" })),
+      ];
+      for (const line of lines) {
+        const y = priceToY(line.price, pad, rect.height - pad.top - pad.bottom, maxPrice, minPrice);
+        ctx.save();
+        ctx.strokeStyle = line.color;
+        ctx.fillStyle = line.color;
+        ctx.globalAlpha = 0.75;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(rect.width - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(`${line.label} ${fmt(line.price, 2)}`, rect.width - pad.right - 92, y - 4);
+        ctx.restore();
+      }
+    }
+
+    function drawStructureOverlay(ctx, candles, pad, width, maxPrice, minPrice) {
+      const points = state.technicals?.swing_points || [];
+      const step = width / candles.length;
+      const firstTime = Number(candles[0].time);
+      const lastTime = Number(candles[candles.length - 1].time);
+      const candleTimes = candles.map(c => Number(c.time));
+      for (const point of points) {
+        const time = pointTimeSeconds(point.time);
+        if (time < firstTime || time > lastTime) continue;
+        const index = nearestCandleIndex(candleTimes, time);
+        if (index < 0) continue;
+        const x = pad.left + index * step + step / 2;
+        const y = priceToY(point.price, pad, undefined, maxPrice, minPrice);
+        ctx.save();
+        ctx.fillStyle = point.type === "high" ? "#e15c58" : "#19a974";
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = "11px Arial";
+        ctx.fillText(point.type === "high" ? "H" : "L", x + 5, y - 5);
+        ctx.restore();
+      }
+    }
+
+    function drawBollingerOverlay(ctx, candles, pad, width, height, maxPrice, minPrice) {
+      const closes = candles.map(c => c.close);
+      drawValues(ctx, rollingBollinger(closes, "upper"), pad, width, height, maxPrice, minPrice, "#6fcedd");
+      drawValues(ctx, rollingBollinger(closes, "middle"), pad, width, height, maxPrice, minPrice, "#76879a");
+      drawValues(ctx, rollingBollinger(closes, "lower"), pad, width, height, maxPrice, minPrice, "#6fcedd");
+    }
+
+    function drawVwapOverlay(ctx, candles, pad, width, height, maxPrice, minPrice) {
+      drawValues(ctx, rollingVwap(candles), pad, width, height, maxPrice, minPrice, "#ffffff");
+    }
+
+    function drawVolumeProfileOverlay(ctx, pad, rect, maxPrice, minPrice) {
+      const bins = state.technicals?.volume_profile?.bins || [];
+      if (!bins.length) return;
+      const xRight = rect.width - pad.right - 4;
+      const maxWidth = 84;
+      for (const bin of bins) {
+        const y = priceToY(bin.price, pad, rect.height - pad.top - pad.bottom, maxPrice, minPrice);
+        const w = maxWidth * Number(bin.relative || 0);
+        ctx.save();
+        ctx.fillStyle = "#5aa0ff";
+        ctx.globalAlpha = 0.22;
+        ctx.fillRect(xRight - w, y - 4, w, 8);
+        ctx.restore();
+      }
+    }
+
+    function drawDivergenceOverlay(ctx, candles, pad, width, maxPrice, minPrice) {
+      const divergence = state.technicals?.divergence;
+      if (!divergence || divergence.type === "none") return;
+      drawPointLabels(ctx, candles, divergence.points || [], pad, width, maxPrice, minPrice, divergence.type === "bullish" ? "#19a974" : "#e15c58", divergence.type === "bullish" ? "底背离" : "顶背离");
+    }
+
+    function drawPatternOverlay(ctx, candles, pad, width, maxPrice, minPrice) {
+      drawPointLabels(ctx, candles, state.technicals?.candlestick_patterns || [], pad, width, maxPrice, minPrice, "#d6a03d", null);
+    }
+
+    function drawPointLabels(ctx, candles, points, pad, width, maxPrice, minPrice, color, forcedLabel) {
+      const step = width / candles.length;
+      const firstTime = Number(candles[0].time);
+      const lastTime = Number(candles[candles.length - 1].time);
+      const candleTimes = candles.map(c => Number(c.time));
+      for (const point of points) {
+        const time = pointTimeSeconds(point.time);
+        if (time < firstTime || time > lastTime) continue;
+        const index = Number.isFinite(point.index) ? clamp(point.index - state.chartStart, 0, candles.length - 1) : nearestCandleIndex(candleTimes, time);
+        const candle = candles[index];
+        if (!candle) continue;
+        const price = point.price || candle.close;
+        const x = pad.left + index * step + step / 2;
+        const y = priceToY(price, pad, undefined, maxPrice, minPrice);
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = "11px Arial";
+        ctx.fillText(forcedLabel || point.label || point.code || "", x + 6, y - 6);
+        ctx.restore();
+      }
+    }
+
+    function drawOperationMarkers(ctx, candles, operations, pad, width, maxPrice, minPrice) {
+      if (!operations.length) return;
+      const step = width / candles.length;
+      const candleTimes = candles.map(c => Number(c.time));
+
+      operations.forEach(item => {
+        const time = Number(item.candleTime);
+        const index = nearestCandleIndex(candleTimes, time);
+        if (index < 0) return;
+        const x = pad.left + index * step + step / 2;
+        const y = priceToY(item.price, pad, 0, maxPrice, minPrice);
+        const color = item.side === "LONG" ? "#19a974" : item.side === "SHORT" ? "#e15c58" : "#d6a03d";
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.strokeStyle = "#0b0f15";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = "10px Arial";
+        ctx.fillText(item.source === "智能体" ? "AI" : "ME", x + 7, y + 3);
+        ctx.restore();
+      });
+    }
+
+    function drawTimeAxis(ctx, candles, pad, rect, width) {
+      const step = width / candles.length;
+      const tickCount = Math.min(6, candles.length);
+      ctx.save();
+      ctx.fillStyle = "#8d99a8";
+      ctx.font = "11px Arial";
+      for (let i = 0; i < tickCount; i++) {
+        const index = Math.round((candles.length - 1) * (i / Math.max(1, tickCount - 1)));
+        const candle = candles[index];
+        const x = pad.left + index * step + step / 2;
+        const text = formatCandleTime(candle.time);
+        ctx.fillText(text, Math.min(x, rect.width - pad.right - 78), rect.height - 12);
+      }
+      ctx.restore();
+    }
+
+    function drawWindowInfo(ctx, pad, rect, candles) {
+      const start = state.chartStart + 1;
+      const end = state.chartStart + candles.length;
+      const text = `${start}-${end} / ${state.candles.length}  滚轮缩放，拖动左右移动，双击回到最新`;
+      ctx.save();
+      ctx.fillStyle = "#8d99a8";
+      ctx.font = "11px Arial";
+      ctx.fillText(text, pad.left, rect.height - 28);
+      ctx.restore();
+    }
+
+    function priceToY(price, pad, height, maxPrice, minPrice) {
+      const chartHeight = height || (els.canvas.getBoundingClientRect().height - pad.top - pad.bottom);
+      return pad.top + ((maxPrice - price) / (maxPrice - minPrice || 1)) * chartHeight;
+    }
+
+    function priceFitsVisibleRange(price, candles) {
+      const highs = candles.map(c => c.high);
+      const lows = candles.map(c => c.low);
+      const high = Math.max(...highs);
+      const low = Math.min(...lows);
+      const range = high - low || high * 0.01 || 1;
+      return price >= low - range * 0.25 && price <= high + range * 0.25;
+    }
+
+    function visibleOperations(candles) {
+      if (!candles.length) return [];
+      const firstTime = Number(candles[0].time);
+      const lastTime = Number(candles[candles.length - 1].time);
+      const high = Math.max(...candles.map(c => c.high));
+      const low = Math.min(...candles.map(c => c.low));
+      const range = high - low || high * 0.01 || 1;
+      return state.operations
+        .filter(item => item.symbol === state.symbol && item.interval === state.interval)
+        .filter(item => Number.isFinite(item.price) && item.candleTime >= firstTime && item.candleTime <= lastTime)
+        .filter(item => item.price >= low - range * 0.25 && item.price <= high + range * 0.25);
+    }
+
+    function nearestCandleIndex(candleTimes, time) {
+      if (!Number.isFinite(time)) return -1;
+      let bestIndex = -1;
+      let bestDistance = Infinity;
+      candleTimes.forEach((value, index) => {
+        const distance = Math.abs(value - time);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+      return bestIndex;
+    }
+
+    function visibleCandles() {
+      syncChartWindow();
+      return state.candles.slice(state.chartStart, state.chartStart + state.chartCount);
+    }
+
+    function mergeCandles(previous, incoming, limit) {
+      const byTime = new Map();
+      for (const candle of [...previous, ...incoming]) {
+        const time = Number(candle.time);
+        if (!Number.isFinite(time)) continue;
+        byTime.set(time, { ...candle, time });
+      }
+      return [...byTime.values()]
+        .sort((a, b) => a.time - b.time)
+        .slice(-limit);
+    }
+
+    function isChartPinnedToLatest(candles = state.candles) {
+      if (!candles.length) return true;
+      const count = state.chartCount || 160;
+      return state.chartStart + count >= candles.length - 2;
+    }
+
+    function restoreChartWindow({ resetWindow, previousStartTime, previousCount, wasAtLatest }) {
+      if (resetWindow || wasAtLatest || !Number.isFinite(Number(previousStartTime))) {
+        state.chartCount = previousCount || state.chartCount;
+        syncChartWindow();
+        if (resetWindow || wasAtLatest) {
+          state.chartStart = Math.max(0, state.candles.length - state.chartCount);
+        }
+        return;
+      }
+
+      state.chartCount = previousCount || state.chartCount;
+      syncChartWindow();
+      const startIndex = state.candles.findIndex(c => Number(c.time) >= Number(previousStartTime));
+      if (startIndex >= 0) {
+        state.chartStart = clamp(startIndex, 0, Math.max(0, state.candles.length - state.chartCount));
+      }
+      syncChartWindow();
+    }
+
+    function chartPad() {
+      return { left: 54, right: 74, top: 30, bottom: 34 };
+    }
+
+    function resetChartWindow() {
+      const defaultCount = Math.min(160, Math.max(30, state.candles.length));
+      state.chartCount = defaultCount;
+      state.chartStart = Math.max(0, state.candles.length - defaultCount);
+    }
+
+    function syncChartWindow() {
+      const total = state.candles.length;
+      if (!total) {
+        state.chartStart = 0;
+        state.chartCount = 0;
+        return;
+      }
+      state.chartCount = total < 30 ? total : Math.max(30, Math.min(state.chartCount || 160, total));
+      state.chartStart = Math.max(0, Math.min(state.chartStart || 0, total - state.chartCount));
+    }
+
+    function chartPlotWidth() {
+      const rect = els.canvas.getBoundingClientRect();
+      const pad = chartPad();
+      return Math.max(1, rect.width - pad.left - pad.right);
+    }
+
+    function handleChartWheel(event) {
+      if (!state.candles.length) return;
+      event.preventDefault();
+      syncChartWindow();
+
+      const total = state.candles.length;
+      const rect = els.canvas.getBoundingClientRect();
+      const pad = chartPad();
+      const plotWidth = Math.max(1, rect.width - pad.left - pad.right);
+      const ratio = clamp((event.clientX - rect.left - pad.left) / plotWidth, 0, 1);
+      const anchor = state.chartStart + Math.round(ratio * Math.max(0, state.chartCount - 1));
+      const factor = event.deltaY < 0 ? 0.82 : 1.22;
+      const minCount = Math.min(30, total);
+      const nextCount = clamp(Math.round(state.chartCount * factor), minCount, total);
+
+      state.chartCount = nextCount;
+      state.chartStart = clamp(anchor - Math.round(ratio * Math.max(0, nextCount - 1)), 0, total - nextCount);
+      drawChart();
+    }
+
+    function handleChartMouseDown(event) {
+      if (!state.candles.length) return;
+      event.preventDefault();
+      syncChartWindow();
+      state.drag = {
+        x: event.clientX,
+        start: state.chartStart,
+      };
+      els.canvas.classList.add("dragging");
+    }
+
+    function handleChartMouseMove(event) {
+      if (!state.drag || !state.candles.length) return;
+      event.preventDefault();
+      const pxPerCandle = chartPlotWidth() / Math.max(1, state.chartCount);
+      const offset = Math.round((state.drag.x - event.clientX) / Math.max(1, pxPerCandle));
+      const maxStart = Math.max(0, state.candles.length - state.chartCount);
+      state.chartStart = clamp(state.drag.start + offset, 0, maxStart);
+      drawChart();
+    }
+
+    function endChartDrag() {
+      state.drag = null;
+      els.canvas.classList.remove("dragging");
+    }
+
+    function handleChartDoubleClick() {
+      resetChartWindow();
+      drawChart();
+    }
+
+    function drawMoving(ctx, candles, period, pad, width, height, maxPrice, minPrice, color) {
+      const values = candles.map((_, index) => {
+        const subset = candles.slice(0, index + 1).map(c => c.close);
+        return ema(subset, period);
+      });
+      drawValues(ctx, values, pad, width, height, maxPrice, minPrice, color);
+    }
+
+    function drawLine(ctx, candles, getter, pad, width, height, maxPrice, minPrice, color) {
+      drawValues(ctx, candles.map(getter), pad, width, height, maxPrice, minPrice, color);
+    }
+
+    function drawValues(ctx, values, pad, width, height, maxPrice, minPrice, color) {
+      const step = width / values.length;
+      const scale = price => pad.top + ((maxPrice - price) / (maxPrice - minPrice || 1)) * height;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      values.forEach((value, i) => {
+        if (!value) return;
+        const x = pad.left + i * step + step / 2;
+        const y = scale(value);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function recordOperation(source, side, price, quantity, note) {
+      const latestCandle = state.candles[state.candles.length - 1];
+      state.operations.unshift({
+        createdAt: new Date().toLocaleString(),
+        createdAtIso: new Date().toISOString(),
+        source,
+        side,
+        price: Number(price || 0),
+        quantity: Number(quantity || 0),
+        symbol: state.symbol,
+        interval: state.interval,
+        marketSource: state.source,
+        candleTime: latestCandle ? Number(latestCandle.time) : null,
+        note: note || "",
+      });
+      state.operations = state.operations.slice(0, 200);
+      localStorage.setItem("quantDeskOperations", JSON.stringify(state.operations));
+      renderOperations();
+      drawChart();
+    }
+
+    function renderOperations() {
+      els.operationLog.innerHTML = state.operations.map(item => `
+        <tr title="${escapeHtml(item.note || "")}">
+          <td>${escapeHtml(item.createdAt)}</td>
+          <td>${escapeHtml(item.source)}</td>
+          <td class="${item.side === "LONG" ? "positive" : item.side === "SHORT" ? "negative" : ""}">${sideLabel(item.side)}</td>
+          <td>${fmt(item.price, 2)}</td>
+          <td>${fmt(item.quantity, 6)}</td>
+          <td>${escapeHtml(item.interval || "-")}</td>
+          <td>${escapeHtml(item.note || "-")}</td>
+        </tr>
+      `).join("");
+    }
+
+    function exportOperationsCsv() {
+      if (!state.operations.length) {
+        setStatus("当前没有可导出的操作记录。");
+        return;
+      }
+      const headers = ["created_at", "symbol", "interval", "market_source", "source", "side", "price", "quantity", "candle_time", "note"];
+      const rows = state.operations.map(item => [
+        item.createdAtIso || item.createdAt || "",
+        item.symbol || "",
+        item.interval || "",
+        item.marketSource || "",
+        item.source || "",
+        item.side || "",
+        item.price ?? "",
+        item.quantity ?? "",
+        item.candleTime ? new Date(Number(item.candleTime) * 1000).toISOString() : "",
+        item.note || "",
+      ]);
+      const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `quant-desk-operations-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setStatus("操作记录 CSV 已导出。");
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? "");
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function generateSampleCandles(count, interval) {
+      const candles = [];
+      let price = 45000;
+      const stepSeconds = interval === "15m" ? 900 : 3600;
+      const start = Math.floor(Date.now() / 1000) - count * stepSeconds;
+      for (let i = 0; i < count; i++) {
+        const change = Math.sin(i / 25) * 0.0015 + Math.sin(i / 7) * 0.0008;
+        const open = price;
+        const close = Math.max(1000, open * (1 + change));
+        const range = open * (0.003 + 0.001 * Math.abs(Math.sin(i / 13)));
+        candles.push({
+          time: start + i * stepSeconds,
+          open,
+          high: Math.max(open, close) + range,
+          low: Math.min(open, close) - range,
+          close,
+          volume: 1000 + Math.abs(Math.sin(i / 9)) * 400,
+        });
+        price = close;
+      }
+      return candles;
+    }
+
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const headers = lines.shift().split(",").map(h => h.trim().toLowerCase().replace(/\s+/g, "_"));
+      const idx = name => headers.findIndex(h => [name, name.replace("_", "")].includes(h));
+      const t = idx("timestamp") >= 0 ? idx("timestamp") : idx("open_time");
+      const o = idx("open");
+      const h = idx("high");
+      const l = idx("low");
+      const c = idx("close");
+      const v = idx("volume");
+      return lines.map(line => {
+        const cols = line.split(",");
+        let time = cols[t];
+        if (/^\d+$/.test(time)) {
+          time = Number(time);
+          if (time > 10000000000) time = Math.floor(time / 1000);
+        } else {
+          time = Math.floor(new Date(time).getTime() / 1000);
+        }
+        return {
+          time,
+          open: Number(cols[o]),
+          high: Number(cols[h]),
+          low: Number(cols[l]),
+          close: Number(cols[c]),
+          volume: Number(cols[v] || 0),
+        };
+      }).filter(candle => Number.isFinite(candle.close));
+    }
+
+    function sma(values, period) {
+      if (values.length < period) return null;
+      return values.slice(-period).reduce((a, b) => a + b, 0) / period;
+    }
+
+    function ema(values, period) {
+      if (values.length < period) return null;
+      const multiplier = 2 / (period + 1);
+      let value = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+      for (const price of values.slice(period)) value = (price - value) * multiplier + value;
+      return value;
+    }
+
+    function rsi(values, period) {
+      if (values.length <= period) return null;
+      let gain = 0;
+      let loss = 0;
+      const recent = values.slice(-period - 1);
+      for (let i = 1; i < recent.length; i++) {
+        const change = recent[i] - recent[i - 1];
+        if (change >= 0) gain += change;
+        else loss += Math.abs(change);
+      }
+      const avgGain = gain / period;
+      const avgLoss = loss / period;
+      if (avgLoss === 0) return 100;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+    }
+
+    function atr(candles, period) {
+      if (candles.length <= period) return null;
+      const recent = candles.slice(-period);
+      let prevClose = candles[candles.length - period - 1].close;
+      const trs = recent.map(c => {
+        const tr = Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));
+        prevClose = c.close;
+        return tr;
+      });
+      return trs.reduce((a, b) => a + b, 0) / period;
+    }
+
+    function buildTechnicalSnapshot(candles) {
+      if (!candles.length) return null;
+      const closes = candles.map(c => c.close);
+      const swingPoints = detectSwingPoints(candles);
+      const supportResistance = buildSupportResistance(candles);
+      const marketStructure = analyzeMarketStructure(swingPoints);
+      const fibonacci = analyzeFibonacci(candles, swingPoints);
+      const bollinger = analyzeBollinger(closes);
+      const vwapView = analyzeVwap(candles);
+      const macdView = analyzeMacd(closes);
+      const divergence = analyzeDivergence(candles, swingPoints);
+      const patterns = detectPatterns(candles);
+      const volumeProfile = analyzeVolumeProfile(candles);
+      let score = 0;
+      const notes = [];
+
+      if (marketStructure.bias === "bullish") { score += 0.14; notes.push("市场结构偏多。"); }
+      if (marketStructure.bias === "bearish") { score -= 0.14; notes.push("市场结构偏空。"); }
+      if (fibonacci.zone === "bullish_retracement") { score += 0.08; notes.push("价格处在多头回调斐波那契区域。"); }
+      if (fibonacci.zone === "bearish_retracement") { score -= 0.08; notes.push("价格处在空头反弹斐波那契区域。"); }
+      if (bollinger.state === "upper_breakout") { score += 0.05; notes.push("布林带上轨突破。"); }
+      if (bollinger.state === "lower_breakout") { score -= 0.05; notes.push("布林带下轨突破。"); }
+      if (bollinger.state === "squeeze") notes.push("布林带收口，等待方向选择。");
+      if (vwapView.position === "above") { score += 0.04; notes.push("价格在VWAP上方。"); }
+      if (vwapView.position === "below") { score -= 0.04; notes.push("价格在VWAP下方。"); }
+      if (macdView.bias === "bullish") { score += 0.06; notes.push("MACD偏多。"); }
+      if (macdView.bias === "bearish") { score -= 0.06; notes.push("MACD偏空。"); }
+      if (divergence.type === "bullish") { score += 0.08; notes.push("出现潜在底背离。"); }
+      if (divergence.type === "bearish") { score -= 0.08; notes.push("出现潜在顶背离。"); }
+      const bullishPatterns = patterns.filter(item => item.bias === "bullish").length;
+      const bearishPatterns = patterns.filter(item => item.bias === "bearish").length;
+      score += Math.min(0.06, bullishPatterns * 0.03);
+      score -= Math.min(0.06, bearishPatterns * 0.03);
+
+      return {
+        score: clamp(score, -1, 1),
+        notes,
+        swing_points: swingPoints,
+        support_resistance: supportResistance,
+        market_structure: marketStructure,
+        fibonacci,
+        bollinger,
+        vwap: vwapView,
+        macd: macdView,
+        divergence,
+        candlestick_patterns: patterns,
+        volume_profile: volumeProfile,
+      };
+    }
+
+    function detectSwingPoints(candles, lookback = 3) {
+      const points = [];
+      for (let i = lookback; i < candles.length - lookback; i++) {
+        const window = candles.slice(i - lookback, i + lookback + 1);
+        const candle = candles[i];
+        if (candle.high === Math.max(...window.map(item => item.high))) points.push({ index: i, time: candle.time, type: "high", price: candle.high });
+        if (candle.low === Math.min(...window.map(item => item.low))) points.push({ index: i, time: candle.time, type: "low", price: candle.low });
+      }
+      return points.slice(-24);
+    }
+
+    function analyzeMarketStructure(points) {
+      const highs = points.filter(item => item.type === "high").slice(-3);
+      const lows = points.filter(item => item.type === "low").slice(-3);
+      const labels = [];
+      for (let i = 1; i < highs.length; i++) labels.push(highs[i].price > highs[i - 1].price ? "HH" : "LH");
+      for (let i = 1; i < lows.length; i++) labels.push(lows[i].price > lows[i - 1].price ? "HL" : "LL");
+      const bullish = labels.filter(item => item === "HH" || item === "HL").length;
+      const bearish = labels.filter(item => item === "LH" || item === "LL").length;
+      const bias = bullish >= 3 && bullish > bearish ? "bullish" : bearish >= 3 && bearish > bullish ? "bearish" : "neutral";
+      return { bias, labels, recent_highs: highs, recent_lows: lows };
+    }
+
+    function analyzeFibonacci(candles, points) {
+      let start = null;
+      let end = null;
+      for (let i = points.length - 1; i >= 1; i--) {
+        if (points[i].type !== points[i - 1].type) {
+          start = points[i - 1];
+          end = points[i];
+          break;
+        }
+      }
+      if (!start || !end) {
+        const recent = candles.slice(-120);
+        const low = recent.reduce((best, item, i) => item.low < best.item.low ? { item, i } : best, { item: recent[0], i: 0 });
+        const high = recent.reduce((best, item, i) => item.high > best.item.high ? { item, i } : best, { item: recent[0], i: 0 });
+        const offset = candles.length - recent.length;
+        start = low.i < high.i ? { index: offset + low.i, time: low.item.time, type: "low", price: low.item.low } : { index: offset + high.i, time: high.item.time, type: "high", price: high.item.high };
+        end = low.i < high.i ? { index: offset + high.i, time: high.item.time, type: "high", price: high.item.high } : { index: offset + low.i, time: low.item.time, type: "low", price: low.item.low };
+      }
+      const move = end.price - start.price;
+      const direction = move >= 0 ? "up" : "down";
+      const latest = candles[candles.length - 1].close;
+      const ratios = [0.236, 0.382, 0.5, 0.618, 0.786];
+      const levels = ratios.map(ratio => {
+        const price = end.price - move * ratio;
+        return { ratio, price, distance_pct: latest ? ((latest - price) / latest) * 100 : 0 };
+      });
+      const a = end.price - move * 0.382;
+      const b = end.price - move * 0.618;
+      const inZone = latest >= Math.min(a, b) && latest <= Math.max(a, b);
+      return { direction, zone: inZone ? (direction === "up" ? "bullish_retracement" : "bearish_retracement") : "outside", anchor_start: start, anchor_end: end, levels };
+    }
+
+    function analyzeBollinger(values) {
+      if (values.length < 20) return { state: "unknown", upper: null, middle: null, lower: null, bandwidth_pct: 0 };
+      const recent = values.slice(-20);
+      const middle = recent.reduce((a, b) => a + b, 0) / 20;
+      const std = Math.sqrt(recent.reduce((sum, value) => sum + ((value - middle) ** 2), 0) / 20);
+      const upper = middle + 2 * std;
+      const lower = middle - 2 * std;
+      const latest = values[values.length - 1];
+      const bandwidthPct = middle ? ((upper - lower) / middle) * 100 : 0;
+      let state = bandwidthPct < 1.2 ? "squeeze" : "inside";
+      if (latest > upper) state = "upper_breakout";
+      if (latest < lower) state = "lower_breakout";
+      return { state, upper, middle, lower, bandwidth_pct: bandwidthPct };
+    }
+
+    function analyzeVwap(candles, period = 96) {
+      const recent = candles.slice(-period);
+      const totalVolume = recent.reduce((sum, candle) => sum + Math.max(0, candle.volume || 0), 0);
+      const latest = candles[candles.length - 1].close;
+      if (!totalVolume) return { value: latest, position: "unknown", distance_pct: 0 };
+      const value = recent.reduce((sum, candle) => sum + ((candle.high + candle.low + candle.close) / 3) * candle.volume, 0) / totalVolume;
+      return { value, position: latest > value ? "above" : latest < value ? "below" : "at", distance_pct: latest ? ((latest - value) / latest) * 100 : 0 };
+    }
+
+    function analyzeMacd(values) {
+      const macdValues = macdSeries(values).filter(value => value !== null);
+      const signalValues = emaSeries(macdValues, 9);
+      const macd = macdValues[macdValues.length - 1] || 0;
+      const signal = signalValues[signalValues.length - 1] || 0;
+      const histogram = macd - signal;
+      const bias = macd > signal && histogram > 0 ? "bullish" : macd < signal && histogram < 0 ? "bearish" : "neutral";
+      return { macd, signal, histogram, bias };
+    }
+
+    function analyzeDivergence(candles, points) {
+      const closes = candles.map(c => c.close);
+      const rsiValues = rsiSeries(closes, 14);
+      const macdValues = macdSeries(closes);
+      const lows = points.filter(item => item.type === "low").slice(-2);
+      const highs = points.filter(item => item.type === "high").slice(-2);
+      if (lows.length === 2 && lows[1].price < lows[0].price) {
+        if ((rsiValues[lows[1].index] || 0) > (rsiValues[lows[0].index] || 0) || (macdValues[lows[1].index] || 0) > (macdValues[lows[0].index] || 0)) {
+          return { type: "bullish", basis: "价格新低但动能不新低", points: lows };
+        }
+      }
+      if (highs.length === 2 && highs[1].price > highs[0].price) {
+        if ((rsiValues[highs[1].index] || 100) < (rsiValues[highs[0].index] || 100) || (macdValues[highs[1].index] || 0) < (macdValues[highs[0].index] || 0)) {
+          return { type: "bearish", basis: "价格新高但动能不新高", points: highs };
+        }
+      }
+      return { type: "none", basis: "未发现明显背离", points: [] };
+    }
+
+    function detectPatterns(candles) {
+      const result = [];
+      const recent = candles.slice(-5);
+      recent.forEach((candle, offset) => {
+        const index = candles.length - recent.length + offset;
+        const body = Math.abs(candle.close - candle.open);
+        const range = candle.high - candle.low || 1;
+        const upper = candle.high - Math.max(candle.open, candle.close);
+        const lower = Math.min(candle.open, candle.close) - candle.low;
+        if (body / range <= 0.12) result.push(pattern("doji", "neutral", "十字星", index, candle));
+        if (lower >= body * 2.2 && upper <= Math.max(body, range * 0.18)) result.push(pattern("hammer", "bullish", "锤子线", index, candle));
+        if (upper >= body * 2.2 && lower <= Math.max(body, range * 0.18)) result.push(pattern("shooting_star", "bearish", "射击星", index, candle));
+      });
+      const prev = candles[candles.length - 2];
+      const cur = candles[candles.length - 1];
+      if (prev && cur) {
+        const prevLow = Math.min(prev.open, prev.close);
+        const prevHigh = Math.max(prev.open, prev.close);
+        const curLow = Math.min(cur.open, cur.close);
+        const curHigh = Math.max(cur.open, cur.close);
+        if (prev.close < prev.open && cur.close > cur.open && curLow <= prevLow && curHigh >= prevHigh) result.push(pattern("bullish_engulfing", "bullish", "多头吞没", candles.length - 1, cur));
+        if (prev.close > prev.open && cur.close < cur.open && curLow <= prevLow && curHigh >= prevHigh) result.push(pattern("bearish_engulfing", "bearish", "空头吞没", candles.length - 1, cur));
+      }
+      return result.slice(-8);
+    }
+
+    function analyzeVolumeProfile(candles, bins = 24) {
+      const recent = candles.slice(-240);
+      const low = Math.min(...recent.map(c => c.low));
+      const high = Math.max(...recent.map(c => c.high));
+      if (!(high > low)) return { bins: [], point_of_control: null };
+      const bucketSize = (high - low) / bins;
+      const buckets = Array.from({ length: bins }, () => 0);
+      for (const candle of recent) {
+        const typical = (candle.high + candle.low + candle.close) / 3;
+        const index = clamp(Math.floor((typical - low) / bucketSize), 0, bins - 1);
+        buckets[index] += Math.max(0, candle.volume || 0);
+      }
+      const maxVolume = Math.max(...buckets, 1);
+      const rows = buckets.map((volume, index) => ({ price: low + bucketSize * (index + 0.5), volume, relative: volume / maxVolume }));
+      return { bins: rows, point_of_control: rows.reduce((best, item) => item.volume > best.volume ? item : best, rows[0]) };
+    }
+
+    function buildSupportResistance(candles) {
+      const latest = candles[candles.length - 1]?.close || 0;
+      const recent = candles.slice(-180);
+      const supports = clusterLevels(recent.map(c => c.low), latest).filter(item => item.price < latest).sort((a, b) => Math.abs(a.price - latest) - Math.abs(b.price - latest)).slice(0, 5);
+      const resistances = clusterLevels(recent.map(c => c.high), latest).filter(item => item.price > latest).sort((a, b) => Math.abs(a.price - latest) - Math.abs(b.price - latest)).slice(0, 5);
+      return { supports, resistances };
+    }
+
+    function clusterLevels(prices, latest) {
+      const tolerance = Math.max(latest * 0.0025, 1e-9);
+      const clusters = [];
+      for (const price of [...prices].sort((a, b) => a - b)) {
+        const last = clusters[clusters.length - 1];
+        const avg = last ? last.reduce((a, b) => a + b, 0) / last.length : null;
+        if (!last || Math.abs(price - avg) > tolerance) clusters.push([price]);
+        else last.push(price);
+      }
+      return clusters.map(cluster => {
+        const price = cluster.reduce((a, b) => a + b, 0) / cluster.length;
+        return { price, distance_pct: latest ? ((price - latest) / latest) * 100 : 0, touches: cluster.length };
+      }).sort((a, b) => b.touches - a.touches);
+    }
+
+    function rollingBollinger(values, band) {
+      return values.map((_, index) => {
+        if (index + 1 < 20) return null;
+        const view = analyzeBollinger(values.slice(0, index + 1));
+        return view[band];
+      });
+    }
+
+    function rollingVwap(candles, period = 96) {
+      return candles.map((_, index) => analyzeVwap(candles.slice(Math.max(0, index - period + 1), index + 1), period).value);
+    }
+
+    function rsiSeries(values, period) {
+      return values.map((_, index) => rsi(values.slice(0, index + 1), period));
+    }
+
+    function emaSeries(values, period) {
+      return values.map((_, index) => ema(values.slice(0, index + 1), period)).filter(value => value !== null);
+    }
+
+    function macdSeries(values) {
+      return values.map((_, index) => {
+        const subset = values.slice(0, index + 1);
+        const fast = ema(subset, 12);
+        const slow = ema(subset, 26);
+        return fast !== null && slow !== null ? fast - slow : null;
+      });
+    }
+
+    function pattern(code, bias, label, index, candle) {
+      return { code, bias, label, index, time: candle.time, price: candle.close };
+    }
+
+    function pointTimeSeconds(value) {
+      if (Number.isFinite(Number(value))) return Number(value);
+      const time = Math.floor(new Date(value).getTime() / 1000);
+      return Number.isFinite(time) ? time : 0;
+    }
+
+    function sideLabel(side) {
+      if (side === "LONG") return "做多";
+      if (side === "SHORT") return "做空";
+      return "观望";
+    }
+
+    function sourceLabel(source) {
+      if (String(source || "").startsWith("csv:")) return "CSV";
+      if (source === "auto") return "自动";
+      if (source === "okx") return "OKX";
+      if (source === "binance") return "Binance";
+      if (source === "coinbase") return "Coinbase";
+      if (source === "sample") return "样例";
+      return source || "-";
+    }
+
+    function sourceOrder(source) {
+      const sources = ["okx", "binance", "coinbase"];
+      if (!source || source === "auto") return sources;
+      return [source, ...sources.filter(item => item !== source)];
+    }
+
+    function okxInstId(symbol) {
+      const normalized = String(symbol || "").toUpperCase();
+      if (normalized.includes("-")) return normalized;
+      for (const quote of ["USDT", "USDC", "USD"]) {
+        if (normalized.endsWith(quote)) return `${normalized.slice(0, -quote.length)}-${quote}`;
+      }
+      return normalized;
+    }
+
+    function riskAllowedLabel() {
+      if (state.riskAllowed === true) return "允许模拟";
+      if (state.riskAllowed === false) return "风控拦截";
+      return "本地估算";
+    }
+
+    function loadedStatus(payload) {
+      const source = sourceLabel(payload.source);
+      const requested = sourceLabel(payload.requested_source || state.requestedSource);
+      const prefix = payload.source === "sample" ? "已加载样例行情" : `已加载 ${source} 真实行情`;
+      const fallback = requested !== source && payload.source !== "sample" ? `，由 ${requested} 自动切换而来` : "";
+      return `${prefix}${fallback}，${state.symbol} ${state.interval}，共 ${state.candles.length} 根K线。`;
+    }
+
+    function configureAutoRefresh() {
+      if (state.refreshTimer) {
+        clearInterval(state.refreshTimer);
+        state.refreshTimer = null;
+      }
+      const seconds = Number(els.autoRefreshSelect.value || 0);
+      if (seconds > 0) {
+        state.refreshTimer = setInterval(syncRealtimeMarket, seconds * 1000);
+        setStatus(`已开启 ${seconds} 秒实时同步。`);
+      } else {
+        setStatus("实时同步已暂停。");
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;",
+      })[char]);
+    }
+
+    els.loadBtn.addEventListener("click", loadMarket);
+    els.sourceSelect.addEventListener("change", loadMarket);
+    els.intervalSelect.addEventListener("change", loadMarket);
+    els.historyLimitSelect.addEventListener("change", loadMarket);
+    els.autoRefreshSelect.addEventListener("change", configureAutoRefresh);
+    els.toolButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        const tool = button.dataset.tool;
+        state.activeTools[tool] = !state.activeTools[tool];
+        button.classList.toggle("active", state.activeTools[tool]);
+        drawChart();
+      });
+    });
+    els.canvas.addEventListener("wheel", handleChartWheel, { passive: false });
+    els.canvas.addEventListener("mousedown", handleChartMouseDown);
+    els.canvas.addEventListener("mousemove", handleChartMouseMove);
+    els.canvas.addEventListener("mouseup", endChartDrag);
+    els.canvas.addEventListener("mouseleave", endChartDrag);
+    els.canvas.addEventListener("dblclick", handleChartDoubleClick);
+    els.recordManualBtn.addEventListener("click", () => {
+      recordOperation("本人", els.manualSide.value, els.manualPrice.value, els.manualQty.value, els.manualNote.value);
+      els.manualNote.value = "";
+    });
+    els.recordAgentBtn.addEventListener("click", () => {
+      const signal = state.signal;
+      if (!signal) return;
+      const note = [
+        `置信度 ${fmt(signal.confidence, 3)}`,
+        `风控 ${riskAllowedLabel()}`,
+        ...(signal.reasons || []),
+      ].join("；");
+      recordOperation("智能体", signal.decision, signal.entry || state.indicators.close, els.manualQty.value, note);
+    });
+    els.exportLogBtn.addEventListener("click", exportOperationsCsv);
+    els.clearLogBtn.addEventListener("click", () => {
+      state.operations = [];
+      localStorage.removeItem("quantDeskOperations");
+      renderOperations();
+      drawChart();
+    });
+    els.csvInput.addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      updateMarket({
+        candles: parseCsv(text),
+        source: `csv:${file.name}`,
+        requested_source: "csv",
+        symbol: els.symbolInput.value.trim().toUpperCase() || state.symbol,
+        interval: els.intervalSelect.value,
+        analysis: null,
+        source_errors: {},
+      });
+      setStatus(`已导入本地CSV：${file.name}`);
+    });
+    window.addEventListener("resize", drawChart);
+
+    renderOperations();
+    loadMarket().then(configureAutoRefresh);
+  </script>
+</body>
+</html>
