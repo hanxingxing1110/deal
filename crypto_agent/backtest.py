@@ -12,7 +12,7 @@ from crypto_agent.indicators import latest_indicator_snapshot
 from crypto_agent.market_data import Candle
 from crypto_agent.paper_trading import build_paper_order
 from crypto_agent.risk import review_signal
-from crypto_agent.strategy import build_signal
+from crypto_agent.strategy import StrategyParams, build_signal
 from crypto_agent.technical_analysis import build_technical_snapshot
 
 
@@ -46,7 +46,11 @@ class BacktestPosition:
     entry_fee: float
 
 
-def run_backtest(config: AgentConfig, candles: list[Candle]) -> dict[str, Any]:
+def run_backtest(
+    config: AgentConfig,
+    candles: list[Candle],
+    strategy_params: StrategyParams | None = None,
+) -> dict[str, Any]:
     if len(candles) < 40:
         raise ValueError("Need at least 40 candles for a useful backtest.")
 
@@ -57,6 +61,7 @@ def run_backtest(config: AgentConfig, candles: list[Candle]) -> dict[str, Any]:
     trades: list[BacktestTrade] = []
     position: BacktestPosition | None = None
     lookback = 30
+    strategy_params = strategy_params or StrategyParams()
 
     for index in range(lookback, len(candles)):
         candle = candles[index]
@@ -77,6 +82,7 @@ def run_backtest(config: AgentConfig, candles: list[Candle]) -> dict[str, Any]:
             signal = build_signal(
                 indicators,
                 allow_short=config.allow_short,
+                params=strategy_params,
                 technicals=technicals,
             )
             review = review_signal(config, indicators, signal)
@@ -134,9 +140,81 @@ def run_backtest(config: AgentConfig, candles: list[Candle]) -> dict[str, Any]:
         "first_candle": candles[0].timestamp,
         "last_candle": candles[-1].timestamp,
         "data_quality": review_candles(candles, config.interval),
+        "strategy_params": asdict(strategy_params),
         "trades": [asdict(trade) for trade in trades],
     }
+    result["advanced_metrics"] = calculate_advanced_metrics(result["trades"], config.starting_cash)
     return result
+
+
+def calculate_advanced_metrics(
+    trades: list[dict[str, Any]],
+    starting_cash: float,
+) -> dict[str, Any]:
+    if not trades:
+        return {
+            "expectancy": 0.0,
+            "average_win": 0.0,
+            "average_loss": 0.0,
+            "payoff_ratio": None,
+            "max_consecutive_losses": 0,
+            "recovery_factor": None,
+            "trade_count_note": "没有交易，无法评估策略质量。",
+        }
+
+    pnls = [float(trade.get("net_pnl") or 0.0) for trade in trades]
+    wins = [pnl for pnl in pnls if pnl > 0]
+    losses = [pnl for pnl in pnls if pnl <= 0]
+    average_win = sum(wins) / len(wins) if wins else 0.0
+    average_loss = abs(sum(losses) / len(losses)) if losses else 0.0
+    win_rate = len(wins) / len(pnls) if pnls else 0.0
+    loss_rate = 1 - win_rate
+    expectancy = (average_win * win_rate) - (average_loss * loss_rate)
+    max_consecutive_losses = _max_consecutive_losses(pnls)
+    net_profit = sum(pnls)
+    max_drawdown_cash = _max_drawdown_cash(pnls, starting_cash)
+    recovery_factor = net_profit / max_drawdown_cash if max_drawdown_cash > 0 else None
+
+    return {
+        "expectancy": round(expectancy, 4),
+        "average_win": round(average_win, 4),
+        "average_loss": round(average_loss, 4),
+        "payoff_ratio": round(average_win / average_loss, 4) if average_loss else None,
+        "max_consecutive_losses": max_consecutive_losses,
+        "recovery_factor": round(recovery_factor, 4) if recovery_factor is not None else None,
+        "trade_count_note": _trade_count_note(len(trades)),
+    }
+
+
+def _max_consecutive_losses(pnls: list[float]) -> int:
+    longest = 0
+    current = 0
+    for pnl in pnls:
+        if pnl <= 0:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def _max_drawdown_cash(pnls: list[float], starting_cash: float) -> float:
+    cash = starting_cash
+    peak = cash
+    max_drawdown = 0.0
+    for pnl in pnls:
+        cash += pnl
+        peak = max(peak, cash)
+        max_drawdown = max(max_drawdown, peak - cash)
+    return max_drawdown
+
+
+def _trade_count_note(count: int) -> str:
+    if count < 20:
+        return "样本交易数偏少，结论只能作为观察。"
+    if count < 80:
+        return "样本交易数中等，适合继续分段验证。"
+    return "样本交易数较多，可以进一步做年份和行情状态拆分。"
 
 
 def save_backtest_json(result: dict[str, Any], output_path: str | Path) -> None:

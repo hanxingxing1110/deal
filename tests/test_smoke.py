@@ -28,16 +28,22 @@ from crypto_agent.market_intelligence import (
     build_market_intelligence,
     render_market_intelligence_report,
 )
+from crypto_agent.paper_ledger import append_ledger_entry, clear_ledger, read_ledger, summarize_ledger
 from crypto_agent.prepare_data import prepare_market_data, prepare_sample_market_data
 from crypto_agent.segmented_validation import run_segmented_strategy_validation
 from crypto_agent.strategy import StrategyParams
+from crypto_agent.strategy_profiles import get_profile, list_profiles
 from crypto_agent.strategy_lab import run_timeframe_experiment
 from crypto_agent.strategy_optimizer import _candidate_params
 from crypto_agent.technical_analysis import build_technical_snapshot
 from crypto_agent.trading_desk_server import (
     _coinbase_product,
+    _interval_meta,
+    _normalize_interval,
     _normalize_limit,
+    _normalize_start,
     _okx_inst_id,
+    _readiness_notes,
     _source_order,
 )
 from crypto_agent.walk_forward import run_walk_forward
@@ -74,6 +80,7 @@ class AgentSmokeTest(unittest.TestCase):
         self.assertIn("total_trades", result)
         self.assertIn("data_quality", result)
         self.assertIn("trades", result)
+        self.assertIn("advanced_metrics", result)
 
         with TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "backtest_report.html"
@@ -205,6 +212,13 @@ class AgentSmokeTest(unittest.TestCase):
         self.assertGreater(len(candidates), 0)
         self.assertTrue(all(isinstance(item, StrategyParams) for item in candidates))
 
+    def test_strategy_profiles_are_available(self) -> None:
+        profiles = list_profiles()
+
+        self.assertGreaterEqual(len(profiles), 3)
+        self.assertEqual(get_profile("strict_trend_v1").id, "strict_trend_v1")
+        self.assertEqual(get_profile("unknown").id, "balanced_v1")
+
     def test_segmented_validation_compares_strategies(self) -> None:
         config = AgentConfig()
         candles_15m = generate_intraday_sample_candles(7 * 24 * 4)
@@ -266,7 +280,52 @@ class AgentSmokeTest(unittest.TestCase):
         self.assertEqual(_source_order("binance"), ["binance", "okx", "coinbase"])
         self.assertEqual(_normalize_limit("5"), 30)
         self.assertEqual(_normalize_limit("999"), 999)
-        self.assertEqual(_normalize_limit("999999"), 50000)
+        self.assertEqual(_normalize_limit("999999"), 500000)
+        self.assertEqual(_normalize_limit("all", "1s"), 86400)
+        self.assertEqual(_normalize_limit("all", "1M"), 2000)
+        self.assertEqual(_normalize_interval("1M"), "1M")
+        self.assertEqual(_normalize_interval("1min"), "1m")
+        self.assertEqual(_normalize_interval("1year"), "1y")
+        self.assertEqual(_normalize_start("2012-01-01"), "2012-01-01")
+        self.assertEqual(_normalize_start(""), None)
+        self.assertEqual(_interval_meta("1d")["seconds"], 86400)
+
+    def test_trading_desk_readiness_notes(self) -> None:
+        notes = _readiness_notes(
+            {
+                "total_trades": 5,
+                "return_pct": -1.2,
+                "max_drawdown_pct": 9.0,
+            }
+        )
+
+        self.assertGreaterEqual(len(notes), 3)
+
+    def test_paper_ledger_persists_entries(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            ledger = Path(temp_dir) / "ledger.jsonl"
+            clear_ledger(ledger)
+            entry = append_ledger_entry(
+                {
+                    "symbol": "BTCUSDT",
+                    "interval": "15m",
+                    "market_source": "okx",
+                    "source": "智能体",
+                    "side": "LONG",
+                    "price": 60000,
+                    "quantity": 0.01,
+                    "note": "test",
+                    "candle_time": 1780000000,
+                },
+                ledger,
+            )
+            rows = read_ledger(ledger)
+            summary = summarize_ledger(rows)
+
+        self.assertEqual(entry.side, "LONG")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(summary["by_side"]["LONG"], 1)
+        self.assertEqual(summary["notional_usd"], 600.0)
 
     def test_market_intelligence_builds_full_view(self) -> None:
         config = AgentConfig(symbol="BTCUSDT", interval="1h", allow_short=True)

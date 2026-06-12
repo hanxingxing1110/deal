@@ -8,13 +8,14 @@ from crypto_agent.indicators import latest_indicator_snapshot
 from crypto_agent.market_data import Candle
 from crypto_agent.paper_trading import PaperOrder, build_paper_order
 from crypto_agent.risk import review_signal
-from crypto_agent.strategy import build_signal
+from crypto_agent.strategy import StrategyParams, build_signal
 from crypto_agent.technical_analysis import build_technical_snapshot
 
 
 def analyze_market(
     config: AgentConfig,
     candles: list[Candle],
+    strategy_params: StrategyParams | None = None,
 ) -> tuple[dict[str, Any], PaperOrder | None]:
     if len(candles) < 30:
         raise ValueError("Need at least 30 candles to analyze the market.")
@@ -24,6 +25,7 @@ def analyze_market(
     signal = build_signal(
         indicators,
         allow_short=config.allow_short,
+        params=strategy_params,
         technicals=technicals,
     )
     review = review_signal(config, indicators, signal)

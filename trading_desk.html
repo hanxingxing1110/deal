@@ -376,6 +376,56 @@
       color: var(--red);
     }
 
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .status-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 64px;
+    }
+
+    .status-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .status-item strong {
+      display: block;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .mini-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pill.good { color: var(--green); border-color: #215c45; }
+    .pill.bad { color: var(--red); border-color: #673037; }
+    .pill.warn { color: var(--amber); border-color: #6a5125; }
+
     @media (max-width: 1100px) {
       .layout {
         grid-template-columns: 1fr;
@@ -407,8 +457,18 @@
         </select>
         <input id="symbolInput" value="BTCUSDT" title="交易标的">
         <select id="intervalSelect" title="周期">
+          <option value="1s">1秒</option>
+          <option value="1m">1分钟</option>
+          <option value="5m">5分钟</option>
           <option value="15m">15分钟</option>
           <option value="1h">1小时</option>
+          <option value="4h">4小时</option>
+          <option value="8h">8小时</option>
+          <option value="1d">1天</option>
+          <option value="3d">3天</option>
+          <option value="1w">1周</option>
+          <option value="1M">1月</option>
+          <option value="1y">1年</option>
         </select>
         <select id="historyLimitSelect" title="历史K线数量">
           <option value="300">300根</option>
@@ -416,13 +476,24 @@
           <option value="3000">3,000根</option>
           <option value="10000">10,000根</option>
           <option value="50000">50,000根</option>
+          <option value="all">2012至今/最大历史</option>
         </select>
+        <input id="historyStartInput" type="date" value="2012-01-01" title="历史起始日期">
         <select id="autoRefreshSelect" title="自动刷新">
           <option value="5" selected>实时：5秒</option>
           <option value="10">实时：10秒</option>
           <option value="30">实时：30秒</option>
           <option value="60">实时：60秒</option>
           <option value="0">暂停实时</option>
+        </select>
+        <select id="strategySelect" title="策略版本">
+          <option value="balanced_v1">平衡趋势 v1</option>
+          <option value="strict_trend_v1">严格趋势 v1</option>
+          <option value="conservative_risk_v1">保守风控 v1</option>
+        </select>
+        <select id="streamSelect" title="实时行情模式">
+          <option value="ws" selected>WebSocket优先</option>
+          <option value="poll">轮询</option>
         </select>
         <button id="loadBtn" class="primary">立即同步</button>
         <input id="csvInput" type="file" accept=".csv,text/csv" title="导入CSV">
@@ -438,6 +509,8 @@
           <div class="metric"><span>ATR占比</span><strong id="atrPct">-</strong></div>
           <div class="metric"><span>数据源</span><strong id="dataSource">-</strong></div>
           <div class="metric"><span>最后更新</span><strong id="lastUpdated">-</strong></div>
+          <div class="metric"><span>实时连接</span><strong id="streamStatus">-</strong></div>
+          <div class="metric"><span>策略版本</span><strong id="strategyName">-</strong></div>
         </section>
 
         <section class="tool-strip" aria-label="技术工具">
@@ -472,6 +545,28 @@
             <div class="tech-item"><span>背离/形态</span><strong id="techDivergence">-</strong></div>
             <div class="tech-item"><span>共振分</span><strong id="techScore">-</strong></div>
           </div>
+        </section>
+
+        <section>
+          <h2>市场情报</h2>
+          <div class="status-grid">
+            <div class="status-item"><span>盘口</span><strong id="intelBook">-</strong></div>
+            <div class="status-item"><span>资金费率</span><strong id="intelFunding">-</strong></div>
+            <div class="status-item"><span>新闻风险</span><strong id="intelNews">-</strong></div>
+            <div class="status-item"><span>综合观点</span><strong id="intelTradeView">-</strong></div>
+          </div>
+          <ul id="intelEvents" class="mini-list"></ul>
+        </section>
+
+        <section>
+          <h2>研究回测快照</h2>
+          <div class="status-grid">
+            <div class="status-item"><span>收益率</span><strong id="btReturn">-</strong></div>
+            <div class="status-item"><span>最大回撤</span><strong id="btDrawdown">-</strong></div>
+            <div class="status-item"><span>交易次数</span><strong id="btTrades">-</strong></div>
+            <div class="status-item"><span>期望值</span><strong id="btExpectancy">-</strong></div>
+          </div>
+          <ul id="btReadiness" class="mini-list"></ul>
         </section>
 
         <div class="desk-grid">
@@ -535,6 +630,30 @@
         </section>
 
         <section>
+          <h2>图表手动工具</h2>
+          <div class="actions" style="margin-top:10px">
+            <button id="drawHorizontalBtn">水平线</button>
+            <button id="drawTrendBtn">趋势线</button>
+            <button id="clearDrawingsBtn" class="danger">清除画线</button>
+          </div>
+          <p id="drawModeHint" class="note">未选择画线工具。</p>
+        </section>
+
+        <section>
+          <h2>提醒监控</h2>
+          <div id="alertList" class="note">等待行情提醒。</div>
+        </section>
+
+        <section>
+          <h2>纸上账本</h2>
+          <div class="status-grid">
+            <div class="status-item"><span>记录总数</span><strong id="ledgerTotal">-</strong></div>
+            <div class="status-item"><span>名义金额</span><strong id="ledgerNotional">-</strong></div>
+          </div>
+          <p id="ledgerLatest" class="note">等待记录。</p>
+        </section>
+
+        <section>
           <h2>操作记录</h2>
           <div class="log">
             <table>
@@ -572,12 +691,24 @@
       riskBlocks: [],
       lastUpdatedAt: null,
       refreshTimer: null,
+      intelligenceTimer: null,
+      ws: null,
+      wsSource: "",
+      streamStatus: "未连接",
       isLoading: false,
       isRealtimeSyncing: false,
       chartStart: 0,
       chartCount: 160,
       drag: null,
       technicals: null,
+      intelligence: null,
+      backtestSummary: null,
+      alerts: [],
+      ledgerSummary: null,
+      strategyProfile: null,
+      drawMode: null,
+      trendDraft: null,
+      drawings: JSON.parse(localStorage.getItem("quantDeskDrawings") || "[]"),
       activeTools: {
         fibonacci: true,
         structure: true,
@@ -597,7 +728,10 @@
       symbolInput: document.getElementById("symbolInput"),
       intervalSelect: document.getElementById("intervalSelect"),
       historyLimitSelect: document.getElementById("historyLimitSelect"),
+      historyStartInput: document.getElementById("historyStartInput"),
       autoRefreshSelect: document.getElementById("autoRefreshSelect"),
+      strategySelect: document.getElementById("strategySelect"),
+      streamSelect: document.getElementById("streamSelect"),
       loadBtn: document.getElementById("loadBtn"),
       csvInput: document.getElementById("csvInput"),
       canvas: document.getElementById("chartCanvas"),
@@ -607,6 +741,8 @@
       atrPct: document.getElementById("atrPct"),
       dataSource: document.getElementById("dataSource"),
       lastUpdated: document.getElementById("lastUpdated"),
+      streamStatus: document.getElementById("streamStatus"),
+      strategyName: document.getElementById("strategyName"),
       chartSymbol: document.getElementById("chartSymbol"),
       agentDecision: document.getElementById("agentDecision"),
       agentConfidence: document.getElementById("agentConfidence"),
@@ -623,6 +759,16 @@
       techMacd: document.getElementById("techMacd"),
       techDivergence: document.getElementById("techDivergence"),
       techScore: document.getElementById("techScore"),
+      intelBook: document.getElementById("intelBook"),
+      intelFunding: document.getElementById("intelFunding"),
+      intelNews: document.getElementById("intelNews"),
+      intelTradeView: document.getElementById("intelTradeView"),
+      intelEvents: document.getElementById("intelEvents"),
+      btReturn: document.getElementById("btReturn"),
+      btDrawdown: document.getElementById("btDrawdown"),
+      btTrades: document.getElementById("btTrades"),
+      btExpectancy: document.getElementById("btExpectancy"),
+      btReadiness: document.getElementById("btReadiness"),
       manualSide: document.getElementById("manualSide"),
       manualPrice: document.getElementById("manualPrice"),
       manualQty: document.getElementById("manualQty"),
@@ -632,6 +778,14 @@
       recordAgentBtn: document.getElementById("recordAgentBtn"),
       exportLogBtn: document.getElementById("exportLogBtn"),
       clearLogBtn: document.getElementById("clearLogBtn"),
+      drawHorizontalBtn: document.getElementById("drawHorizontalBtn"),
+      drawTrendBtn: document.getElementById("drawTrendBtn"),
+      clearDrawingsBtn: document.getElementById("clearDrawingsBtn"),
+      drawModeHint: document.getElementById("drawModeHint"),
+      alertList: document.getElementById("alertList"),
+      ledgerTotal: document.getElementById("ledgerTotal"),
+      ledgerNotional: document.getElementById("ledgerNotional"),
+      ledgerLatest: document.getElementById("ledgerLatest"),
       operationLog: document.getElementById("operationLog"),
     };
 
@@ -652,8 +806,61 @@
     }
 
     function selectedHistoryLimit() {
+      if (els.historyLimitSelect.value === "all") return "all";
       const value = Number(els.historyLimitSelect.value || 1000);
       return clamp(Number.isFinite(value) ? value : 1000, 30, 50000);
+    }
+
+    function numericHistoryLimit(fallback = 1000) {
+      const selected = selectedHistoryLimit();
+      if (selected === "all") return intervalSafeMax(state.interval || els.intervalSelect.value);
+      return selected;
+    }
+
+    function selectedHistoryStart() {
+      return els.historyLimitSelect.value === "all" ? (els.historyStartInput.value || "2012-01-01") : "";
+    }
+
+    function intervalSafeMax(interval) {
+      return ({
+        "1s": 86400,
+        "1m": 250000,
+        "5m": 250000,
+        "15m": 500000,
+        "1h": 150000,
+        "4h": 80000,
+        "8h": 60000,
+        "1d": 20000,
+        "3d": 10000,
+        "1w": 5000,
+        "1M": 2000,
+        "1y": 500,
+      })[interval] || 1000;
+    }
+
+    function intervalSeconds(interval) {
+      return ({
+        "1s": 1,
+        "1m": 60,
+        "5m": 300,
+        "15m": 900,
+        "1h": 3600,
+        "4h": 14400,
+        "8h": 28800,
+        "1d": 86400,
+        "3d": 259200,
+        "1w": 604800,
+        "1M": 2592000,
+        "1y": 31536000,
+      })[interval] || 900;
+    }
+
+    function historyRequestLabel(limit, interval, start) {
+      if (limit === "all") {
+        const max = intervalSafeMax(interval);
+        return `${start || "2012-01-01"} 至今，最多 ${max.toLocaleString("en-US")} 根`;
+      }
+      return `${limit} 根`;
     }
 
     function formatCandleTime(seconds) {
@@ -673,6 +880,7 @@
       const symbol = els.symbolInput.value.trim().toUpperCase() || "BTCUSDT";
       const interval = els.intervalSelect.value;
       const limit = selectedHistoryLimit();
+      const strategy = els.strategySelect.value;
       state.isLoading = true;
       state.symbol = symbol;
       state.interval = interval;
@@ -680,15 +888,20 @@
       els.manualInterval.value = interval;
       els.chartSymbol.textContent = `${symbol} ${interval}`;
       els.loadBtn.disabled = true;
-      setStatus(`正在加载 ${symbol} ${interval} 行情，数据源：${sourceLabel(requestedSource)}，历史 ${limit} 根...`);
+      const start = selectedHistoryStart();
+      setStatus(`正在加载 ${symbol} ${interval} 行情，数据源：${sourceLabel(requestedSource)}，历史 ${historyRequestLabel(limit, interval, start)}...`);
 
       try {
-        const payload = await fetchMarketPayload(requestedSource, symbol, interval, limit);
+        closeMarketWebSocket();
+        const payload = await fetchMarketPayload(requestedSource, symbol, interval, limit, strategy, start);
         updateMarket(payload, { resetWindow: true, merge: false });
+        refreshResearchPanels();
+        configureMarketStream();
         setStatus(loadedStatus(payload));
       } catch (error) {
         console.warn(error);
-        const candles = generateSampleCandles(Math.min(limit, interval === "15m" ? 1200 : 600), interval);
+        const fallbackLimit = Math.min(numericHistoryLimit(1000), interval === "1s" ? 3600 : interval === "1m" ? 3000 : 1200);
+        const candles = generateSampleCandles(fallbackLimit, interval);
         updateMarket({
           candles,
           source: "sample",
@@ -715,11 +928,13 @@
       const requestedSource = state.requestedSource;
       const symbol = state.symbol;
       const interval = state.interval;
-      const limit = Math.min(320, selectedHistoryLimit());
+      const limit = Math.min(320, numericHistoryLimit(1000));
+      const start = selectedHistoryStart();
+      const strategy = els.strategySelect.value;
       state.isRealtimeSyncing = true;
 
       try {
-        const payload = await fetchMarketPayload(requestedSource, symbol, interval, limit);
+        const payload = await fetchMarketPayload(requestedSource, symbol, interval, limit, strategy, start);
         updateMarket(payload, { resetWindow: false, merge: true });
         setStatus(`${loadedStatus(payload)} 实时同步：${state.lastUpdatedAt.toLocaleTimeString()}。`);
       } catch (error) {
@@ -730,8 +945,8 @@
       }
     }
 
-    async function fetchMarketPayload(source, symbol, interval, limit) {
-      const localPayload = await tryFetchLocalCandles(source, symbol, interval, limit);
+    async function fetchMarketPayload(source, symbol, interval, limit, strategy = "balanced_v1", start = "") {
+      const localPayload = await tryFetchLocalCandles(source, symbol, interval, limit, strategy, start);
       if (localPayload) {
         return localPayload;
       }
@@ -762,12 +977,12 @@
       throw new Error(Object.entries(errors).map(([name, message]) => `${sourceLabel(name)}: ${message}`).join("；"));
     }
 
-    async function tryFetchLocalCandles(source, symbol, interval, limit) {
+    async function tryFetchLocalCandles(source, symbol, interval, limit, strategy = "balanced_v1", start = "") {
       const canUseRelative = location.protocol.startsWith("http") && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
       const urls = canUseRelative ? [""] : ["http://127.0.0.1:8765"];
       for (const baseUrl of urls) {
         try {
-          return await fetchLocalCandles(source, symbol, interval, limit, baseUrl);
+          return await fetchLocalCandles(source, symbol, interval, limit, strategy, start, baseUrl);
         } catch (error) {
           console.warn("Local market service unavailable:", error);
         }
@@ -775,8 +990,9 @@
       return null;
     }
 
-    async function fetchLocalCandles(source, symbol, interval, limit, baseUrl = "") {
-      const params = new URLSearchParams({ source, symbol, interval, limit });
+    async function fetchLocalCandles(source, symbol, interval, limit, strategy = "balanced_v1", start = "", baseUrl = "") {
+      const params = new URLSearchParams({ source, symbol, interval, limit, strategy });
+      if (start) params.set("start", start);
       const response = await fetch(`${baseUrl}/api/candles?${params}`);
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.error || `Local API HTTP ${response.status}`);
@@ -785,8 +1001,8 @@
 
     async function fetchOkx(symbol, interval, limit = 300) {
       const instId = okxInstId(symbol);
-      const bar = interval === "15m" ? "15m" : "1H";
-      const directLimit = Math.min(300, selectedHistoryLimit(), limit);
+      const bar = okxBar(interval);
+      const directLimit = Math.min(300, numericHistoryLimit(1000), Number(limit) || 300);
       const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${directLimit}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`OKX HTTP ${response.status}`);
@@ -805,8 +1021,8 @@
     }
 
     async function fetchBinance(symbol, interval, limit = 300) {
-      const directLimit = Math.min(1000, selectedHistoryLimit(), limit);
-      const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${directLimit}`;
+      const directLimit = Math.min(1000, numericHistoryLimit(1000), Number(limit) || 300);
+      const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${binanceBar(interval)}&limit=${directLimit}`;
       const response = await fetch(url);
       if (response.status === 451) throw new Error("Binance HTTP 451（当前网络或地区可能无法访问 Binance 公共行情接口）");
       if (!response.ok) throw new Error(`Binance HTTP ${response.status}`);
@@ -829,9 +1045,10 @@
           : symbol.endsWith("USD")
             ? symbol.slice(0, -3) + "-USD"
             : symbol;
-      const granularity = interval === "15m" ? 900 : 3600;
+      const granularity = coinbaseGranularity(interval);
+      if (!granularity) throw new Error(`Coinbase 不支持 ${interval} 周期`);
       const end = new Date();
-      const directLimit = Math.min(300, selectedHistoryLimit(), limit);
+      const directLimit = Math.min(300, numericHistoryLimit(1000), Number(limit) || 300);
       const start = new Date(end.getTime() - granularity * directLimit * 1000);
       const params = new URLSearchParams({
         granularity,
@@ -854,6 +1071,37 @@
         }));
     }
 
+    function okxBar(interval) {
+      return ({
+        "1s": "1s",
+        "1m": "1m",
+        "5m": "5m",
+        "15m": "15m",
+        "1h": "1H",
+        "4h": "4H",
+        "8h": "8H",
+        "1d": "1D",
+        "3d": "3D",
+        "1w": "1W",
+        "1M": "1M",
+        "1y": "1M",
+      })[interval] || "15m";
+    }
+
+    function binanceBar(interval) {
+      return interval === "1y" ? "1M" : interval;
+    }
+
+    function coinbaseGranularity(interval) {
+      return ({
+        "1m": 60,
+        "5m": 300,
+        "15m": 900,
+        "1h": 3600,
+        "1d": 86400,
+      })[interval] || null;
+    }
+
     function updateMarket(payload, options = {}) {
       const incoming = (payload.candles || []).filter(c => Number.isFinite(c.close) && c.close > 0);
       const previousCandles = state.candles;
@@ -862,12 +1110,13 @@
       const wasAtLatest = isChartPinnedToLatest(previousCandles);
 
       state.candles = options.merge
-        ? mergeCandles(previousCandles, incoming, selectedHistoryLimit())
+        ? mergeCandles(previousCandles, incoming, numericHistoryLimit(1000))
         : incoming;
       state.source = payload.source || "sample";
       state.requestedSource = payload.requested_source || state.requestedSource;
       state.symbol = payload.symbol || state.symbol;
       state.interval = payload.interval || state.interval;
+      state.strategyProfile = payload.strategy_profile || state.strategyProfile;
       state.sourceErrors = payload.source_errors || {};
       state.lastUpdatedAt = new Date();
       applyAnalysis(payload.analysis);
@@ -1014,6 +1263,9 @@
       els.atrPct.textContent = `${fmt(state.indicators.atrPct, 3)}%`;
       els.dataSource.textContent = sourceLabel(state.source);
       els.lastUpdated.textContent = state.lastUpdatedAt ? state.lastUpdatedAt.toLocaleTimeString() : "-";
+      els.streamStatus.textContent = state.streamStatus;
+      els.streamStatus.className = state.streamStatus.includes("连接") || state.streamStatus.includes("推送") ? "positive" : "";
+      els.strategyName.textContent = state.strategyProfile?.name || els.strategySelect.options[els.strategySelect.selectedIndex]?.text || "-";
       els.manualPrice.value = last ? last.close.toFixed(2) : "";
 
       els.agentDecision.textContent = sideLabel(signal.decision);
@@ -1028,6 +1280,10 @@
       if (state.riskBlocks.length) details.push(`风控拦截：${state.riskBlocks.join("；")}`);
       els.agentReasons.innerHTML = details.map(r => `<p>${escapeHtml(r)}</p>`).join("");
       renderTechnicalSummary();
+      renderIntelligence();
+      renderBacktestSummary();
+      renderAlerts();
+      renderLedger();
     }
 
     function renderTechnicalSummary() {
@@ -1048,6 +1304,133 @@
       els.techDivergence.textContent = `${divergence.type || "-"} / ${patterns.slice(-2).map(item => item.label).join("、") || "无形态"}`;
       els.techScore.textContent = fmt(tech.score, 3);
       els.techScore.className = Number(tech.score) >= 0 ? "positive" : "negative";
+    }
+
+    async function refreshResearchPanels() {
+      await Promise.allSettled([
+        refreshIntelligence(),
+        refreshBacktestSummary(),
+        refreshAlerts(),
+        refreshLedger(),
+      ]);
+    }
+
+    async function refreshIntelligence() {
+      const payload = await fetchLocalJson("/api/intelligence", {
+        source: state.requestedSource,
+        symbol: state.symbol,
+        interval: state.interval,
+        limit: Math.min(numericHistoryLimit(1000), 1000),
+        start: selectedHistoryStart(),
+      });
+      if (payload?.ok) {
+        state.intelligence = payload.intelligence;
+        renderIntelligence();
+      }
+    }
+
+    async function refreshBacktestSummary() {
+      const payload = await fetchLocalJson("/api/backtest-summary", {
+        source: state.requestedSource,
+        symbol: state.symbol,
+        interval: state.interval,
+        limit: Math.min(numericHistoryLimit(1000), 1200),
+        start: selectedHistoryStart(),
+        strategy: els.strategySelect.value,
+      });
+      if (payload?.ok) {
+        state.backtestSummary = payload.summary;
+        renderBacktestSummary();
+      }
+    }
+
+    async function refreshAlerts() {
+      const payload = await fetchLocalJson("/api/alerts", {
+        source: state.requestedSource,
+        symbol: state.symbol,
+        interval: state.interval,
+        limit: Math.min(numericHistoryLimit(1000), 400),
+        start: selectedHistoryStart(),
+      });
+      if (payload?.ok) {
+        state.alerts = payload.alerts || [];
+        renderAlerts();
+      }
+    }
+
+    async function refreshLedger() {
+      const payload = await fetchLocalJson("/api/ledger", {});
+      if (payload?.ok) {
+        state.ledgerSummary = payload.summary;
+        if (Array.isArray(payload.entries) && payload.entries.length) {
+          state.operations = mergeOperations(state.operations, payload.entries);
+          localStorage.setItem("quantDeskOperations", JSON.stringify(state.operations));
+          renderOperations();
+        }
+        renderLedger();
+      }
+    }
+
+    async function fetchLocalJson(path, params = {}, options = {}) {
+      const query = new URLSearchParams(params);
+      const response = await fetch(`${path}?${query}`, options);
+      const payload = await response.json();
+      if (!response.ok || payload.ok === false) throw new Error(payload.error || `HTTP ${response.status}`);
+      return payload;
+    }
+
+    function renderIntelligence() {
+      const intel = state.intelligence;
+      if (!intel) return;
+      const book = intel.order_book || {};
+      const funding = intel.funding || {};
+      const risk = intel.risk_events || {};
+      const trade = intel.trade_view || {};
+      els.intelBook.textContent = book.available ? `${book.tilt || "-"} / spread ${fmt(book.spread_bps, 2)} bps` : "不可用";
+      els.intelFunding.textContent = funding.available ? `${funding.crowding || "-"} / ${fmt(funding.funding_rate_pct, 4)}%` : "不可用";
+      els.intelNews.textContent = `${risk.risk_level || "unknown"} / ${risk.headline_count || 0}条`;
+      els.intelTradeView.textContent = `${trade.stance || "-"} / ${fmt(trade.score, 3)}`;
+      els.intelTradeView.className = trade.stance === "long" ? "positive" : trade.stance === "short" ? "negative" : "";
+      const events = (risk.events || []).slice(0, 4);
+      els.intelEvents.innerHTML = events.length
+        ? events.map(item => `<li>${escapeHtml(item.severity || "-")} · ${escapeHtml(item.title || "-")}</li>`).join("")
+        : "<li>暂无新闻事件。</li>";
+    }
+
+    function renderBacktestSummary() {
+      const summary = state.backtestSummary;
+      if (!summary) return;
+      const advanced = summary.advanced_metrics || {};
+      els.btReturn.textContent = `${fmt(summary.return_pct, 2)}%`;
+      els.btReturn.className = Number(summary.return_pct) >= 0 ? "positive" : "negative";
+      els.btDrawdown.textContent = `${fmt(summary.max_drawdown_pct, 2)}%`;
+      els.btTrades.textContent = fmt(summary.total_trades, 0);
+      els.btExpectancy.textContent = fmt(advanced.expectancy, 4);
+      els.btExpectancy.className = Number(advanced.expectancy) >= 0 ? "positive" : "negative";
+      els.btReadiness.innerHTML = (summary.readiness || []).map(item => `<li>${escapeHtml(item)}</li>`).join("");
+    }
+
+    function renderAlerts() {
+      const alerts = state.alerts || [];
+      els.alertList.innerHTML = alerts.map(item => {
+        const klass = item.level === "risk" ? "bad" : item.level === "signal" ? "good" : item.level === "technical" ? "warn" : "";
+        return `<p><span class="pill ${klass}">${escapeHtml(item.level || "info")}</span> ${escapeHtml(item.title || "-")}：${escapeHtml(item.detail || "")}</p>`;
+      }).join("") || "暂无提醒。";
+    }
+
+    function renderLedger() {
+      const summary = state.ledgerSummary;
+      if (!summary) {
+        els.ledgerTotal.textContent = state.operations.length;
+        els.ledgerNotional.textContent = "-";
+        return;
+      }
+      els.ledgerTotal.textContent = fmt(summary.total, 0);
+      els.ledgerNotional.textContent = fmt(summary.notional_usd, 2);
+      const latest = summary.latest;
+      els.ledgerLatest.textContent = latest
+        ? `最近：${sideLabel(latest.side)} ${fmt(latest.price, 2)}，${latest.note || latest.source || "-"}`
+        : "等待记录。";
     }
 
     function nearestFibText(fib) {
@@ -1139,6 +1522,7 @@
       drawTechnicalOverlays(ctx, candles, pad, rect, width, height, maxPrice, minPrice);
       drawPlanLines(ctx, pad, rect, maxPrice, minPrice);
       drawOperationMarkers(ctx, candles, visibleOps, pad, width, maxPrice, minPrice);
+      drawManualDrawings(ctx, candles, pad, width, height, maxPrice, minPrice);
       drawTimeAxis(ctx, candles, pad, rect, width);
       drawWindowInfo(ctx, pad, rect, candles);
     }
@@ -1349,6 +1733,118 @@
         ctx.fillText(item.source === "智能体" ? "AI" : "ME", x + 7, y + 3);
         ctx.restore();
       });
+    }
+
+    function drawManualDrawings(ctx, candles, pad, width, height, maxPrice, minPrice) {
+      const firstTime = Number(candles[0].time);
+      const lastTime = Number(candles[candles.length - 1].time);
+      const step = width / candles.length;
+      const xForTime = time => {
+        const ratio = (Number(time) - firstTime) / Math.max(1, lastTime - firstTime);
+        return pad.left + clamp(ratio, 0, 1) * width + step / 2;
+      };
+      ctx.save();
+      ctx.lineWidth = 1.3;
+      ctx.font = "11px Arial";
+      for (const drawing of state.drawings) {
+        if (drawing.symbol !== state.symbol || drawing.interval !== state.interval) continue;
+        ctx.strokeStyle = drawing.color || "#ffffff";
+        ctx.fillStyle = ctx.strokeStyle;
+        if (drawing.type === "horizontal") {
+          const y = priceToY(drawing.price, pad, height, maxPrice, minPrice);
+          ctx.setLineDash([8, 5]);
+          ctx.beginPath();
+          ctx.moveTo(pad.left, y);
+          ctx.lineTo(pad.left + width, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillText(drawing.label || `手动画线 ${fmt(drawing.price, 2)}`, pad.left + 8, y - 5);
+        }
+        if (drawing.type === "trend" && drawing.points?.length === 2) {
+          const [a, b] = drawing.points;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(xForTime(a.time), priceToY(a.price, pad, height, maxPrice, minPrice));
+          ctx.lineTo(xForTime(b.time), priceToY(b.price, pad, height, maxPrice, minPrice));
+          ctx.stroke();
+          ctx.fillText(drawing.label || "趋势线", xForTime(b.time) + 6, priceToY(b.price, pad, height, maxPrice, minPrice) - 6);
+        }
+      }
+      ctx.restore();
+    }
+
+    function handleChartClick(event) {
+      if (!state.drawMode || !state.candles.length) return;
+      const point = chartPointFromEvent(event);
+      if (!point) return;
+      if (state.drawMode === "horizontal") {
+        state.drawings.push({
+          type: "horizontal",
+          symbol: state.symbol,
+          interval: state.interval,
+          price: point.price,
+          color: "#ffffff",
+          label: `水平 ${fmt(point.price, 2)}`,
+        });
+        finishDrawingMode();
+      } else if (state.drawMode === "trend") {
+        if (!state.trendDraft) {
+          state.trendDraft = point;
+          els.drawModeHint.textContent = "趋势线：再点击第二个点。";
+          return;
+        }
+        state.drawings.push({
+          type: "trend",
+          symbol: state.symbol,
+          interval: state.interval,
+          points: [state.trendDraft, point],
+          color: "#d6a03d",
+          label: "趋势线",
+        });
+        state.trendDraft = null;
+        finishDrawingMode();
+      }
+      persistDrawings();
+      drawChart();
+    }
+
+    function chartPointFromEvent(event) {
+      const candles = visibleCandles();
+      if (!candles.length) return null;
+      const rect = els.canvas.getBoundingClientRect();
+      const pad = chartPad();
+      const width = rect.width - pad.left - pad.right;
+      const height = rect.height - pad.top - pad.bottom;
+      const x = clamp(event.clientX - rect.left - pad.left, 0, width);
+      const y = clamp(event.clientY - rect.top - pad.top, 0, height);
+      const visibleOps = visibleOperations(candles);
+      const prices = [
+        ...candles.map(c => c.high),
+        ...candles.map(c => c.low),
+        ...visibleOps.map(item => item.price).filter(Number.isFinite),
+        ...technicalOverlayPrices(),
+      ];
+      const maxPrice = Math.max(...prices);
+      const minPrice = Math.min(...prices);
+      const index = clamp(Math.round((x / Math.max(1, width)) * (candles.length - 1)), 0, candles.length - 1);
+      const price = maxPrice - (y / Math.max(1, height)) * (maxPrice - minPrice);
+      return { time: Number(candles[index].time), price };
+    }
+
+    function setDrawingMode(mode) {
+      state.drawMode = mode;
+      state.trendDraft = null;
+      els.drawModeHint.textContent = mode === "horizontal" ? "水平线：在图上点击目标价格。" : "趋势线：点击两个点。";
+    }
+
+    function finishDrawingMode() {
+      state.drawMode = null;
+      els.drawModeHint.textContent = "未选择画线工具。";
+    }
+
+    function persistDrawings() {
+      state.drawings = state.drawings.slice(-80);
+      localStorage.setItem("quantDeskDrawings", JSON.stringify(state.drawings));
     }
 
     function drawTimeAxis(ctx, candles, pad, rect, width) {
@@ -1569,7 +2065,7 @@
 
     function recordOperation(source, side, price, quantity, note) {
       const latestCandle = state.candles[state.candles.length - 1];
-      state.operations.unshift({
+      const entry = {
         createdAt: new Date().toLocaleString(),
         createdAtIso: new Date().toISOString(),
         source,
@@ -1581,11 +2077,65 @@
         marketSource: state.source,
         candleTime: latestCandle ? Number(latestCandle.time) : null,
         note: note || "",
-      });
+      };
+      state.operations.unshift(entry);
       state.operations = state.operations.slice(0, 200);
       localStorage.setItem("quantDeskOperations", JSON.stringify(state.operations));
+      saveLedgerEntry(entry);
       renderOperations();
       drawChart();
+    }
+
+    async function saveLedgerEntry(entry) {
+      try {
+        const response = await fetch("/api/ledger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            created_at: entry.createdAtIso,
+            symbol: entry.symbol,
+            interval: entry.interval,
+            market_source: entry.marketSource,
+            source: entry.source,
+            side: entry.side,
+            price: entry.price,
+            quantity: entry.quantity,
+            candle_time: entry.candleTime,
+            note: entry.note,
+          }),
+        });
+        const payload = await response.json();
+        if (payload.ok) {
+          state.ledgerSummary = payload.summary;
+          renderLedger();
+        }
+      } catch (error) {
+        console.warn("Ledger API unavailable:", error);
+      }
+    }
+
+    function mergeOperations(localEntries, ledgerEntries) {
+      const mapped = ledgerEntries.map(item => ({
+        createdAt: new Date(item.created_at).toLocaleString(),
+        createdAtIso: item.created_at,
+        source: item.source,
+        side: item.side,
+        price: Number(item.price || 0),
+        quantity: Number(item.quantity || 0),
+        symbol: item.symbol,
+        interval: item.interval,
+        marketSource: item.market_source,
+        candleTime: item.candle_time,
+        note: item.note || "",
+      }));
+      const byKey = new Map();
+      for (const item of [...mapped, ...localEntries]) {
+        const key = `${item.createdAtIso || item.createdAt}-${item.symbol}-${item.side}-${item.price}-${item.note}`;
+        byKey.set(key, item);
+      }
+      return [...byKey.values()]
+        .sort((a, b) => new Date(b.createdAtIso || b.createdAt) - new Date(a.createdAtIso || a.createdAt))
+        .slice(0, 200);
     }
 
     function renderOperations() {
@@ -1641,7 +2191,7 @@
     function generateSampleCandles(count, interval) {
       const candles = [];
       let price = 45000;
-      const stepSeconds = interval === "15m" ? 900 : 3600;
+      const stepSeconds = intervalSeconds(interval);
       const start = Math.floor(Date.now() / 1000) - count * stepSeconds;
       for (let i = 0; i < count; i++) {
         const change = Math.sin(i / 25) * 0.0015 + Math.sin(i / 7) * 0.0008;
@@ -2038,7 +2588,10 @@
       const requested = sourceLabel(payload.requested_source || state.requestedSource);
       const prefix = payload.source === "sample" ? "已加载样例行情" : `已加载 ${source} 真实行情`;
       const fallback = requested !== source && payload.source !== "sample" ? `，由 ${requested} 自动切换而来` : "";
-      return `${prefix}${fallback}，${state.symbol} ${state.interval}，共 ${state.candles.length} 根K线。`;
+      const first = state.candles[0] ? formatCandleTime(state.candles[0].time) : "-";
+      const last = state.candles[state.candles.length - 1] ? formatCandleTime(state.candles[state.candles.length - 1].time) : "-";
+      const note = payload.interval_meta?.deep_history_note ? ` ${payload.interval_meta.deep_history_note}` : "";
+      return `${prefix}${fallback}，${state.symbol} ${state.interval}，共 ${state.candles.length} 根K线，范围 ${first} 到 ${last}。${note}`;
     }
 
     function configureAutoRefresh() {
@@ -2046,13 +2599,104 @@
         clearInterval(state.refreshTimer);
         state.refreshTimer = null;
       }
+      if (state.intelligenceTimer) {
+        clearInterval(state.intelligenceTimer);
+        state.intelligenceTimer = null;
+      }
       const seconds = Number(els.autoRefreshSelect.value || 0);
       if (seconds > 0) {
         state.refreshTimer = setInterval(syncRealtimeMarket, seconds * 1000);
+        state.intelligenceTimer = setInterval(refreshResearchPanels, Math.max(30, seconds * 6) * 1000);
         setStatus(`已开启 ${seconds} 秒实时同步。`);
       } else {
         setStatus("实时同步已暂停。");
       }
+    }
+
+    function configureMarketStream() {
+      closeMarketWebSocket();
+      if (els.streamSelect.value !== "ws" || !okxWsBar(state.interval)) {
+        state.streamStatus = "轮询";
+        renderMetrics();
+        return;
+      }
+      const source = state.source === "okx" || state.requestedSource === "okx" || state.requestedSource === "auto" ? "okx" : "";
+      if (source !== "okx" || !("WebSocket" in window)) {
+        state.streamStatus = "轮询";
+        renderMetrics();
+        return;
+      }
+      const instId = okxInstId(state.symbol);
+      const bar = okxWsBar(state.interval);
+      const ws = new WebSocket("wss://ws.okx.com:8443/ws/v5/public");
+      state.ws = ws;
+      state.wsSource = `${instId}:${bar}`;
+      state.streamStatus = "连接中";
+      renderMetrics();
+
+      ws.addEventListener("open", () => {
+        ws.send(JSON.stringify({ op: "subscribe", args: [{ channel: bar, instId }] }));
+        state.streamStatus = "OKX推送";
+        renderMetrics();
+      });
+      ws.addEventListener("message", event => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (!payload.data || !payload.data.length) return;
+          const row = payload.data[0];
+          const candle = {
+            time: Math.floor(Number(row[0]) / 1000),
+            open: Number(row[1]),
+            high: Number(row[2]),
+            low: Number(row[3]),
+            close: Number(row[4]),
+            volume: Number(row[5] || 0),
+          };
+          updateMarket({
+            ok: true,
+            source: "okx_ws",
+            requested_source: state.requestedSource,
+            symbol: state.symbol,
+            interval: state.interval,
+            candles: [candle],
+            analysis: null,
+            source_errors: {},
+          }, { resetWindow: false, merge: true });
+          setStatus(`OKX WebSocket 已推送最新 ${state.symbol} ${state.interval} K线。`);
+        } catch (error) {
+          console.warn("WebSocket message parse failed:", error);
+        }
+      });
+      ws.addEventListener("close", () => {
+        if (state.ws === ws) {
+          state.streamStatus = "已断开";
+          renderMetrics();
+        }
+      });
+      ws.addEventListener("error", () => {
+        state.streamStatus = "推送失败";
+        renderMetrics();
+      });
+    }
+
+    function closeMarketWebSocket() {
+      if (state.ws) {
+        try { state.ws.close(); } catch (error) { console.warn(error); }
+      }
+      state.ws = null;
+      state.wsSource = "";
+    }
+
+    function okxWsBar(interval) {
+      return ({
+        "1s": "candle1s",
+        "1m": "candle1m",
+        "5m": "candle5m",
+        "15m": "candle15m",
+        "1h": "candle1H",
+        "4h": "candle4H",
+        "1d": "candle1D",
+      })[interval] || "";
     }
 
     function escapeHtml(value) {
@@ -2070,6 +2714,8 @@
     els.intervalSelect.addEventListener("change", loadMarket);
     els.historyLimitSelect.addEventListener("change", loadMarket);
     els.autoRefreshSelect.addEventListener("change", configureAutoRefresh);
+    els.strategySelect.addEventListener("change", loadMarket);
+    els.streamSelect.addEventListener("change", configureMarketStream);
     els.toolButtons.forEach(button => {
       button.addEventListener("click", () => {
         const tool = button.dataset.tool;
@@ -2083,6 +2729,7 @@
     els.canvas.addEventListener("mousemove", handleChartMouseMove);
     els.canvas.addEventListener("mouseup", endChartDrag);
     els.canvas.addEventListener("mouseleave", endChartDrag);
+    els.canvas.addEventListener("click", handleChartClick);
     els.canvas.addEventListener("dblclick", handleChartDoubleClick);
     els.recordManualBtn.addEventListener("click", () => {
       recordOperation("本人", els.manualSide.value, els.manualPrice.value, els.manualQty.value, els.manualNote.value);
@@ -2102,7 +2749,25 @@
     els.clearLogBtn.addEventListener("click", () => {
       state.operations = [];
       localStorage.removeItem("quantDeskOperations");
+      fetch("/api/ledger", { method: "DELETE" })
+        .then(response => response.json())
+        .then(payload => {
+          if (payload.ok) {
+            state.ledgerSummary = payload.summary;
+            renderLedger();
+          }
+        })
+        .catch(error => console.warn("Clear ledger API unavailable:", error));
       renderOperations();
+      drawChart();
+    });
+    els.drawHorizontalBtn.addEventListener("click", () => setDrawingMode("horizontal"));
+    els.drawTrendBtn.addEventListener("click", () => setDrawingMode("trend"));
+    els.clearDrawingsBtn.addEventListener("click", () => {
+      state.drawings = [];
+      state.trendDraft = null;
+      finishDrawingMode();
+      persistDrawings();
       drawChart();
     });
     els.csvInput.addEventListener("change", async event => {
@@ -2121,8 +2786,10 @@
       setStatus(`已导入本地CSV：${file.name}`);
     });
     window.addEventListener("resize", drawChart);
+    window.addEventListener("beforeunload", closeMarketWebSocket);
 
     renderOperations();
+    refreshLedger();
     loadMarket().then(configureAutoRefresh);
   </script>
 </body>
