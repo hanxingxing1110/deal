@@ -17,14 +17,14 @@ function Test-PythonCommand {
     }
 }
 
-if (Test-PythonCommand "python") {
+if (Test-Path $bundledPython) {
+    $python = $bundledPython
+}
+elseif (Test-PythonCommand "python") {
     $python = "python"
 }
 elseif (Test-PythonCommand "py") {
     $python = "py"
-}
-elseif (Test-Path $bundledPython) {
-    $python = $bundledPython
 }
 else {
     Write-Host "No usable Python runtime was found. Please install Python 3.10+ first."
