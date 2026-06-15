@@ -487,6 +487,8 @@
           <option value="0">暂停实时</option>
         </select>
         <select id="strategySelect" title="策略版本">
+          <option value="win_rate_60_v1" selected>60%胜率目标 v1</option>
+          <option value="high_win_rate_v1">胜率优先 v1</option>
           <option value="balanced_v1">平衡趋势 v1</option>
           <option value="strict_trend_v1">严格趋势 v1</option>
           <option value="conservative_risk_v1">保守风控 v1</option>
@@ -1118,6 +1120,7 @@
       state.interval = payload.interval || state.interval;
       state.strategyProfile = payload.strategy_profile || state.strategyProfile;
       state.sourceErrors = payload.source_errors || {};
+      state.historyCompletion = payload.history_completion || null;
       state.lastUpdatedAt = new Date();
       applyAnalysis(payload.analysis);
       restoreChartWindow({
@@ -1407,7 +1410,10 @@
       els.btTrades.textContent = fmt(summary.total_trades, 0);
       els.btExpectancy.textContent = fmt(advanced.expectancy, 4);
       els.btExpectancy.className = Number(advanced.expectancy) >= 0 ? "positive" : "negative";
-      els.btReadiness.innerHTML = (summary.readiness || []).map(item => `<li>${escapeHtml(item)}</li>`).join("");
+      const comparison = summary.baseline
+        ? [`胜率较基准策略：${Number(summary.win_rate_delta_pct || 0) >= 0 ? "+" : ""}${fmt(summary.win_rate_delta_pct, 2)}%，基准胜率 ${fmt(summary.baseline.win_rate_pct, 2)}%。`]
+        : [];
+      els.btReadiness.innerHTML = [...comparison, ...(summary.readiness || [])].map(item => `<li>${escapeHtml(item)}</li>`).join("");
     }
 
     function renderAlerts() {
@@ -2591,7 +2597,10 @@
       const first = state.candles[0] ? formatCandleTime(state.candles[0].time) : "-";
       const last = state.candles[state.candles.length - 1] ? formatCandleTime(state.candles[state.candles.length - 1].time) : "-";
       const note = payload.interval_meta?.deep_history_note ? ` ${payload.interval_meta.deep_history_note}` : "";
-      return `${prefix}${fallback}，${state.symbol} ${state.interval}，共 ${state.candles.length} 根K线，范围 ${first} 到 ${last}。${note}`;
+      const completion = payload.history_completion
+        ? ` 历史补全：${Object.keys(payload.history_completion.contribution || {}).join("+") || source}，缺口 ${payload.history_completion.gap_count || 0}。`
+        : "";
+      return `${prefix}${fallback}，${state.symbol} ${state.interval}，共 ${state.candles.length} 根K线，范围 ${first} 到 ${last}。${completion}${note}`;
     }
 
     function configureAutoRefresh() {

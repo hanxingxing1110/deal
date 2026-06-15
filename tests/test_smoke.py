@@ -12,6 +12,7 @@ from crypto_agent.dual_timeframe import (
     run_cost_stress_test,
     run_sample_dual_timeframe_experiment,
 )
+from crypto_agent.history_completion import SourceCandles, complete_history
 from crypto_agent.market_data import (
     FundingRateSnapshot,
     NewsItem,
@@ -216,8 +217,28 @@ class AgentSmokeTest(unittest.TestCase):
         profiles = list_profiles()
 
         self.assertGreaterEqual(len(profiles), 3)
+        self.assertEqual(get_profile(None).id, "win_rate_60_v1")
+        self.assertEqual(get_profile("win_rate_60_v1").params.target_atr_mult, 1.0)
+        self.assertEqual(get_profile("high_win_rate_v1").params.min_trend_efficiency, 0.14)
         self.assertEqual(get_profile("strict_trend_v1").id, "strict_trend_v1")
-        self.assertEqual(get_profile("unknown").id, "balanced_v1")
+        self.assertEqual(get_profile("unknown").id, "win_rate_60_v1")
+
+    def test_history_completion_fills_missing_candles_from_secondary_source(self) -> None:
+        candles = generate_sample_candles(6)
+        primary = [candles[0], candles[1], candles[3], candles[4], candles[5]]
+        completed, report = complete_history(
+            [
+                SourceCandles("okx", primary),
+                SourceCandles("binance", candles),
+            ],
+            interval_seconds=3600,
+            limit=6,
+        )
+
+        self.assertEqual(len(completed), 6)
+        self.assertEqual(completed[2].timestamp, candles[2].timestamp)
+        self.assertEqual(report["filled_from_secondary"], 1)
+        self.assertEqual(report["gap_count"], 0)
 
     def test_segmented_validation_compares_strategies(self) -> None:
         config = AgentConfig()

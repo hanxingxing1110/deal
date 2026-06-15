@@ -12,6 +12,11 @@ from typing import Any
 from crypto_agent.agent import analyze_market
 from crypto_agent.backtest import run_backtest
 from crypto_agent.config import AgentConfig
+from crypto_agent.history_completion import (
+    SourceCandles,
+    complete_history,
+    coverage_needs_more_sources,
+)
 from crypto_agent.market_intelligence import build_market_intelligence
 from crypto_agent.market_data import (
     Candle,
@@ -109,7 +114,7 @@ class TradingDeskHandler(BaseHTTPRequestHandler):
             start = _normalize_start(params.get("start", [""])[0])
             limit = _normalize_limit(params.get("limit", ["300"])[0], interval)
             strategy_profile = get_profile(params.get("strategy", ["balanced_v1"])[0])
-            candles, actual_source, source_errors = _fetch_market_candles(
+            candles, actual_source, source_errors, completion = _fetch_market_candles(
                 source,
                 symbol,
                 interval,
@@ -143,6 +148,7 @@ class TradingDeskHandler(BaseHTTPRequestHandler):
                     "params": asdict(strategy_profile.params),
                 },
                 "source_errors": source_errors,
+                "history_completion": completion,
                 "analysis": analysis,
                 "analysis_error": analysis_error,
                 "candles": [_candle_payload(candle) for candle in candles],
@@ -157,7 +163,7 @@ class TradingDeskHandler(BaseHTTPRequestHandler):
             interval = _normalize_interval(params.get("interval", ["15m"])[0])
             start = _normalize_start(params.get("start", [""])[0])
             limit = _normalize_limit(params.get("limit", ["320"])[0], interval)
-            candles, actual_source, candle_errors = _fetch_market_candles(
+            candles, actual_source, candle_errors, _completion = _fetch_market_candles(
                 source,
                 symbol,
                 interval,
@@ -197,7 +203,7 @@ class TradingDeskHandler(BaseHTTPRequestHandler):
             start = _normalize_start(params.get("start", [""])[0])
             limit = _normalize_limit(params.get("limit", ["1000"])[0], interval)
             strategy_profile = get_profile(params.get("strategy", ["balanced_v1"])[0])
-            candles, actual_source, source_errors = _fetch_market_candles(
+            candles, actual_source, source_errors, completion = _fetch_market_candles(
                 source,
                 symbol,
                 interval,
@@ -223,6 +229,20 @@ class TradingDeskHandler(BaseHTTPRequestHandler):
             }
             summary["source"] = actual_source
             summary["source_errors"] = source_errors
+            summary["history_completion"] = completion
+            baseline_result = run_backtest(config, candles, get_profile("balanced_v1").params)
+            summary["baseline"] = {
+                "strategy": "balanced_v1",
+                "win_rate_pct": baseline_result.get("win_rate_pct"),
+                "total_trades": baseline_result.get("total_trades"),
+                "return_pct": baseline_result.get("return_pct"),
+                "profit_factor": baseline_result.get("profit_factor"),
+            }
+            summary["win_rate_delta_pct"] = round(
+                float(summary.get("win_rate_pct") or 0.0)
+                - float(summary["baseline"].get("win_rate_pct") or 0.0),
+                2,
+            )
             summary["strategy_profile"] = {
                 "id": strategy_profile.id,
                 "name": strategy_profile.name,
@@ -266,7 +286,7 @@ class TradingDeskHandler(BaseHTTPRequestHandler):
             interval = _normalize_interval(params.get("interval", ["15m"])[0])
             start = _normalize_start(params.get("start", [""])[0])
             limit = _normalize_limit(params.get("limit", ["320"])[0], interval)
-            candles, actual_source, source_errors = _fetch_market_candles(source, symbol, interval, limit, start)
+            candles, actual_source, source_errors, _completion = _fetch_market_candles(source, symbol, interval, limit, start)
             analysis = _build_analysis(symbol, interval, candles, get_profile(None).params)
             alerts = _build_alerts(candles, analysis, actual_source)
         except Exception as exc:
@@ -301,14 +321,34 @@ def _fetch_market_candles(
     interval: str,
     limit: int,
     start: str | None = None,
-) -> tuple[list[Candle], str, dict[str, str]]:
+) -> tuple[list[Candle], str, dict[str, str], dict[str, Any]]:
     errors: dict[str, str] = {}
+    successful: list[SourceCandles] = []
     for candidate in _source_order(source):
         try:
             candles = _fetch_from_source(candidate, symbol, interval, limit, start)
-            return candles, candidate, errors
+            successful.append(SourceCandles(candidate, candles))
+            completed, report = complete_history(
+                successful,
+                int(INTERVALS[interval]["seconds"]),
+                limit,
+                start,
+            )
+            if not coverage_needs_more_sources(completed, int(INTERVALS[interval]["seconds"]), limit, start):
+                actual_source = "+".join(report.get("contribution", {}).keys()) or candidate
+                return completed, actual_source, errors, report
         except Exception as exc:
             errors[candidate] = _format_error(exc)
+
+    if successful:
+        completed, report = complete_history(
+            successful,
+            int(INTERVALS[interval]["seconds"]),
+            limit,
+            start,
+        )
+        actual_source = "+".join(report.get("contribution", {}).keys()) or successful[0].source
+        return completed, actual_source, errors, report
 
     detail = "; ".join(f"{name}: {message}" for name, message in errors.items())
     raise RuntimeError(f"All market data sources failed. {detail}")
@@ -617,6 +657,7 @@ def _readiness_notes(summary: dict[str, Any]) -> list[str]:
     trades = int(summary.get("total_trades") or 0)
     return_pct = float(summary.get("return_pct") or 0.0)
     drawdown = float(summary.get("max_drawdown_pct") or 0.0)
+    profit_factor = float(summary.get("profit_factor") or 0.0)
     if trades < 20:
         notes.append("交易样本偏少，不能进入实盘，只能继续观察。")
     if return_pct <= 0:
